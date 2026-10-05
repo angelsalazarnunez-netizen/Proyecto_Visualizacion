@@ -1,0 +1,1029 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Expediente de desalmacenamiento especial | SIM</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
+    <link href="../css/estilos.css" rel="stylesheet">
+</head>
+<body>
+
+<nav class="navbar navbar-expand-lg sim-navbar shadow-sm">
+    <div class="container">
+        <a class="navbar-brand fw-semibold" href="../inicio.html">
+            <img src="../img/logo-ucr.png" alt="Universidad de Costa Rica" class="sim-logo me-2">SIM · Sistema de Importaciones
+        </a>
+        <span class="navbar-text text-white small">
+            <i class="bi bi-person-circle me-1"></i><span id="usuarioNavbar">—</span>
+        </span>
+    </div>
+</nav>
+
+<main class="container my-4">
+
+    <nav aria-label="Ruta de navegación">
+        <ol class="breadcrumb small">
+            <li class="breadcrumb-item"><a href="expedientes.html">Expedientes</a></li>
+            <li class="breadcrumb-item active" aria-current="page" id="migaReferencia">Expediente</li>
+        </ol>
+    </nav>
+
+    <section class="sim-encabezado p-3 mb-4 shadow-sm">
+        <div class="d-flex flex-wrap justify-content-between align-items-center gap-2">
+            <div>
+                <h1 class="h4 mb-1">
+                    Expediente <span class="sim-referencia" id="tituloReferencia">—</span>
+                </h1>
+                <p class="mb-0 text-muted small" id="tituloTipoTramite">—</p>
+            </div>
+            <span class="badge text-bg-warning fs-6" id="insigniaEstado">—</span>
+        </div>
+    </section>
+
+    <div id="alertaResultado" class="alert d-none" role="alert"></div>
+
+    <div class="alert alert-info d-none" id="avisoSinSicop" role="alert">
+        <i class="bi bi-info-circle me-1"></i>
+        Este tipo de trámite <strong>no requiere contrato SICOP ni orden de compra</strong>.
+    </div>
+
+    <div id="contenidoExpediente" class="d-none">
+
+        <div class="card sim-card mb-4">
+            <div class="card-header">
+                <i class="bi bi-file-earmark-text"></i>Datos del trámite
+            </div>
+            <div class="card-body">
+                <dl class="row mb-0">
+                    <dt class="col-12 col-md-4">Origen o dependencia responsable</dt>
+                    <dd class="col-12 col-md-8" id="datoOrigen">—</dd>
+
+                    <dt class="col-12 col-md-4">País de origen</dt>
+                    <dd class="col-12 col-md-8" id="datoPais">—</dd>
+
+                    <dt class="col-12 col-md-4">Valor estimado de la mercancía</dt>
+                    <dd class="col-12 col-md-8" id="datoValor">—</dd>
+
+                    <dt class="col-12 col-md-4">Usuario responsable</dt>
+                    <dd class="col-12 col-md-8" id="datoResponsable">—</dd>
+
+                    <dt class="col-12 col-md-4">Fecha de registro</dt>
+                    <dd class="col-12 col-md-8" id="datoFecha">—</dd>
+
+                    <dt class="col-12 col-md-4">Justificación</dt>
+                    <dd class="col-12 col-md-8" id="datoJustificacion">—</dd>
+                </dl>
+            </div>
+        </div>
+
+        <div class="card sim-card mb-4">
+            <div class="card-header">
+                <i class="bi bi-arrow-repeat me-1"></i>
+                Actualizar estado del trámite
+            </div>
+
+            <div class="card-body">
+
+                <!-- HU-032: aviso mostrado cuando el expediente está cerrado -->
+                <div id="avisoEstadoFinal"
+                     class="alert alert-secondary d-none"
+                     role="status">
+
+                    <i class="bi bi-lock me-1"></i>
+                    Este expediente se encuentra cerrado.
+                    Su información e historial permanecen disponibles para consulta.
+
+                </div>
+
+                <form id="formCambioEstado"
+                      class="needs-validation"
+                      novalidate>
+
+                    <div class="row g-3">
+
+                        <div class="col-12 col-md-6">
+
+                            <label for="cmbNuevoEstado"
+                                   class="form-label">
+
+                                Nuevo estado
+                                <span class="text-danger">*</span>
+
+                            </label>
+
+                            <select class="form-select"
+                                    id="cmbNuevoEstado"
+                                    name="nuevoEstado"
+                                    required>
+
+                                <option value="" selected>
+                                    Seleccione el nuevo estado
+                                </option>
+
+                            </select>
+
+                            <div class="invalid-feedback">
+                                Seleccione el nuevo estado del trámite.
+                            </div>
+
+                        </div>
+
+
+                        <div class="col-12">
+
+                            <label for="txtJustificacionEstado"
+                                   class="form-label">
+
+                                Nota, observación o justificación
+                                <span class="text-danger">*</span>
+
+                            </label>
+
+                            <textarea class="form-control"
+                                      id="txtJustificacionEstado"
+                                      name="justificacion"
+                                      rows="3"
+                                      maxlength="255"
+                                      placeholder="Indique el motivo o detalle de la actualización realizada."
+                                      required></textarea>
+
+                            <div class="d-flex justify-content-between">
+
+                                <div class="invalid-feedback">
+                                    Indique la justificación del cambio de estado.
+                                </div>
+
+                                <div class="form-text ms-auto">
+                                    <span id="contadorJustificacionEstado">0</span>/255
+                                </div>
+
+                            </div>
+
+                        </div>
+
+                    </div>
+
+
+                    <div class="d-flex justify-content-end gap-2 mt-3">
+
+                        <button type="button"
+                                class="btn btn-outline-secondary"
+                                id="btnLimpiarCambioEstado">
+
+                            Limpiar
+
+                        </button>
+
+                        <button type="submit"
+                                class="btn btn-sim"
+                                id="btnCambiarEstado">
+
+                            <i class="bi bi-check-circle me-1"></i>
+                            Guardar actualización
+
+                        </button>
+
+                    </div>
+
+                </form>
+
+            </div>
+        </div>
+
+        <div class="card sim-card mb-4">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <span><i class="bi bi-paperclip"></i>Documentación del expediente</span>
+                <span class="badge text-bg-light text-dark" id="contadorDocumentos">0</span>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-sm align-middle mb-0">
+                        <caption class="visually-hidden">Documentos asociados al expediente</caption>
+                        <thead>
+                        <tr>
+                            <th scope="col">Archivo</th>
+                            <th scope="col">Tipo de documento</th>
+                            <th scope="col" class="text-center">Versión</th>
+                            <th scope="col">Cargado</th>
+                            <th scope="col"><span class="visually-hidden">Acciones</span></th>
+                        </tr>
+                        </thead>
+                        <tbody id="cuerpoDocumentos"></tbody>
+                    </table>
+                </div>
+                <p class="text-muted small mb-0 mt-3">
+                    Las versiones sustituidas se conservan en el expediente y se muestran como inactivas.
+                </p>
+            </div>
+        </div>
+
+        <div class="card sim-card mb-4">
+            <div class="card-header">
+                <i class="bi bi-cloud-arrow-up"></i>Agregar documentación
+            </div>
+            <div class="card-body">
+                <p class="text-muted small">
+                    La documentación de un desalmacenaje especial suele llegar después del registro.
+                    Se admite cualquier formato, incluidas actas antiguas y documentos atípicos.
+                </p>
+                <form id="formDocumentos" class="needs-validation" novalidate>
+                    <div class="row g-3">
+                        <div class="col-12 col-md-6">
+                            <label for="documentosRespaldo" class="form-label">
+                                Justificación, acta o documento de respaldo
+                            </label>
+                            <input type="file" class="form-control" id="documentosRespaldo"
+                                   name="documentosRespaldo" multiple>
+                        </div>
+                        <div class="col-12 col-md-6">
+                            <label for="packingList" class="form-label">
+                                Lista de empaque <span class="sim-opcional">(si aplica)</span>
+                            </label>
+                            <input type="file" class="form-control" id="packingList" name="packingList">
+                        </div>
+                        <div class="col-12 col-md-6">
+                            <label for="factura" class="form-label">
+                                Factura o documento equivalente <span class="sim-opcional">(si aplica)</span>
+                            </label>
+                            <input type="file" class="form-control" id="factura" name="factura">
+                        </div>
+                        <div class="col-12 col-md-6">
+                            <label for="documentoEmbarque" class="form-label">
+                                Documento de embarque <span class="sim-opcional">(si aplica)</span>
+                            </label>
+                            <input type="file" class="form-control" id="documentoEmbarque"
+                                   name="documentoEmbarque">
+                        </div>
+                    </div>
+                    <div class="d-flex justify-content-end gap-2 mt-3">
+                        <button type="reset" class="btn btn-outline-secondary" id="btnLimpiarDocumentos">
+                            Limpiar
+                        </button>
+                        <button type="submit" class="btn btn-sim" id="btnAgregarDocumentos">
+                            <i class="bi bi-plus-circle me-1"></i>Agregar al expediente
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <div class="card sim-card">
+            <div class="card-header">
+                <i class="bi bi-clock-history"></i>Historial de estados
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-sm align-middle mb-0">
+                        <caption class="visually-hidden">Historial de cambios de estado del expediente</caption>
+                        <thead>
+                        <tr>
+                            <th scope="col">Fecha</th>
+                            <th scope="col">Estado anterior</th>
+                            <th scope="col">Estado nuevo</th>
+                            <th scope="col">Usuario</th>
+                            <th scope="col">Justificación</th>
+                        </tr>
+                        </thead>
+                        <tbody id="cuerpoHistorial"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+</main>
+
+<footer class="sim-pie text-center text-muted small py-4">
+    Universidad de Costa Rica · Oficina de Suministros · Unidad de Importaciones
+</footer>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+    "use strict";
+
+    const BASE_EXPEDIENTES = "/api/v1/tramites/desalmacenaje-especial";
+    const USUARIO_ACTUAL = "Analista de Importaciones";
+    const ID_USUARIO_RESPONSABLE = 1;
+    //CUANDO ESTÉ EL BACKEND SE PUEDE PROBAR CON ESTO EN TRUE
+    const API_DISPONIBLE = false;
+
+    let EXPEDIENTE_DEMO = {
+        referenciaInterna: "DE-2026-0014",
+        tipoTramite: "Desalmacenaje especial",
+        estado: "Pendiente",
+        requiereSicop: false,
+        requiereOrdenCompra: false,
+        origenDependencia: "Escuela de Informática",
+        paisOrigen: "Estados Unidos",
+        moneda: "USD",
+        valorEstimado: 3250.00,
+        justificacion:
+            "Equipo propiedad de la institución que requiere proceso especial de desalmacenaje.",
+        usuarioResponsable: "Analista de Importaciones",
+        fechaCreacion: "2026-09-10T09:35:00",
+
+        documentos: [
+            {
+                idDocumento: 1,
+                nombreArchivo: "acta_salida_equipo.pdf",
+                tipoDocumento: "Documento de respaldo",
+                version: 1,
+                estadoDocumento: "ACT",
+                fechaCarga: "2026-09-10T09:40:00"
+            },
+            {
+                idDocumento: 2,
+                nombreArchivo: "factura_equipo.pdf",
+                tipoDocumento: "Factura",
+                version: 1,
+                estadoDocumento: "ACT",
+                fechaCarga: "2026-09-10T09:42:00"
+            }
+        ],
+
+        historial: [
+            {
+                estadoAnterior: null,
+                estadoNuevo: "Pendiente",
+                usuario: "Analista de Importaciones",
+                justificacion: "Registro inicial del expediente.",
+                fechaHora: "2026-09-10T09:35:00"
+            }
+        ]
+    };
+
+    // ESTADOS PARA PRUEBAS DE HU:032
+    const ESTADOS_DESALMACENAJE = [
+        "Documentación en revisión",
+        "Pendiente de permisos especiales",
+        "En trámite",
+        "En aduana",
+        "Retenido en Almacén Fiscal",
+        "Finalizada",
+        "Cancelada"
+    ];
+
+    const referencia = new URLSearchParams(window.location.search).get("referencia");
+
+    const alertaResultado = document.getElementById("alertaResultado");
+    const contenidoExpediente = document.getElementById("contenidoExpediente");
+    const avisoSinSicop = document.getElementById("avisoSinSicop");
+    const formularioDocumentos = document.getElementById("formDocumentos");
+    const botonAgregar = document.getElementById("btnAgregarDocumentos");
+
+    const formularioCambioEstado = document.getElementById("formCambioEstado");
+    const campoNuevoEstado = document.getElementById("cmbNuevoEstado");
+    const campoJustificacionEstado = document.getElementById("txtJustificacionEstado");
+    const botonCambiarEstado = document.getElementById("btnCambiarEstado");
+
+
+    function mostrarAlerta(tipo, mensaje) {
+        alertaResultado.className = `alert alert-${tipo}`;
+        alertaResultado.textContent = mensaje;
+        alertaResultado.scrollIntoView({
+            behavior: "smooth",
+            block: "center"
+        });
+    }
+
+
+    function ocultarAlerta() {
+        alertaResultado.className = "alert d-none";
+        alertaResultado.textContent = "";
+    }
+
+
+    function formatearMonto(valor, moneda) {
+        const numero = Number(valor).toLocaleString("es-CR", {
+            minimumFractionDigits: 2,
+            maximumFractionDigits: 2
+        });
+
+        return `${moneda} ${numero}`;
+    }
+
+
+    function formatearFechaHora(valor) {
+        if (!valor) {
+            return "—";
+        }
+
+        return new Date(valor).toLocaleString("es-CR", {
+            day: "2-digit",
+            month: "short",
+            year: "numeric",
+            hour: "2-digit",
+            minute: "2-digit"
+        });
+    }
+
+
+    function claseEstado(estado) {
+        if (
+            estado === "Pendiente"
+            || estado === "Pendiente de permisos especiales"
+        ) {
+            return "text-bg-warning";
+        }
+
+        if (
+            estado === "Finalizada"
+            || estado === "Desalmacenado"
+        ) {
+            return "text-bg-success";
+        }
+
+        if (estado === "Cancelada") {
+            return "text-bg-secondary";
+        }
+
+        if (estado === "Retenido en Almacén Fiscal") {
+            return "text-bg-danger";
+        }
+
+        return "text-bg-info";
+    }
+
+
+    function crearCelda(texto, clase) {
+        const celda = document.createElement("td");
+
+        celda.textContent =
+            texto === null || texto === undefined || texto === ""
+                ? "—"
+                : texto;
+
+        if (clase) {
+            celda.className = clase;
+        }
+
+        return celda;
+    }
+
+
+    function pintarDatos(expediente) {
+        document.getElementById("tituloReferencia").textContent =
+            expediente.referenciaInterna;
+
+        document.getElementById("migaReferencia").textContent =
+            expediente.referenciaInterna;
+
+        document.getElementById("tituloTipoTramite").textContent =
+            expediente.tipoTramite;
+
+        document.title =
+            `Expediente ${expediente.referenciaInterna} | SIM`;
+
+        const insignia = document.getElementById("insigniaEstado");
+
+        insignia.className =
+            `badge fs-6 ${claseEstado(expediente.estado)}`;
+
+        insignia.textContent = expediente.estado;
+
+        document.getElementById("datoOrigen").textContent =
+            expediente.origenDependencia ?? "—";
+
+        document.getElementById("datoPais").textContent =
+            expediente.paisOrigen ?? "No aplica";
+
+        document.getElementById("datoValor").textContent =
+            formatearMonto(
+                expediente.valorEstimado,
+                expediente.moneda
+            );
+
+        document.getElementById("datoResponsable").textContent =
+            expediente.usuarioResponsable ?? "—";
+
+        document.getElementById("datoFecha").textContent =
+            formatearFechaHora(expediente.fechaCreacion);
+
+        document.getElementById("datoJustificacion").textContent =
+            expediente.justificacion ?? "—";
+
+        const exento =
+            expediente.requiereSicop === false
+            && expediente.requiereOrdenCompra === false;
+
+        avisoSinSicop.classList.toggle("d-none", !exento);
+    }
+
+
+    function pintarDocumentos(documentos) {
+        const cuerpo = document.getElementById("cuerpoDocumentos");
+
+        cuerpo.replaceChildren();
+
+        document.getElementById("contadorDocumentos").textContent =
+            String(documentos.length);
+
+        if (documentos.length === 0) {
+            const fila = document.createElement("tr");
+            const celda = document.createElement("td");
+
+            celda.colSpan = 5;
+            celda.className = "text-muted small";
+            celda.textContent =
+                "El expediente todavía no tiene documentación asociada.";
+
+            fila.appendChild(celda);
+            cuerpo.appendChild(fila);
+
+            return;
+        }
+
+        documentos.forEach((documento) => {
+            const fila = document.createElement("tr");
+
+            const vigente =
+                documento.estadoDocumento === "ACT";
+
+            if (!vigente) {
+                fila.className = "text-muted";
+            }
+
+            const celdaArchivo = document.createElement("td");
+
+            celdaArchivo.textContent =
+                documento.nombreArchivo;
+
+            if (!vigente) {
+                const etiqueta = document.createElement("span");
+
+                etiqueta.className =
+                    "badge text-bg-secondary ms-2";
+
+                etiqueta.textContent = "Sustituido";
+
+                celdaArchivo.appendChild(etiqueta);
+            }
+
+            fila.appendChild(celdaArchivo);
+
+            fila.appendChild(
+                crearCelda(documento.tipoDocumento)
+            );
+
+            fila.appendChild(
+                crearCelda(
+                    String(documento.version),
+                    "text-center"
+                )
+            );
+
+            fila.appendChild(
+                crearCelda(
+                    formatearFechaHora(documento.fechaCarga)
+                )
+            );
+
+            const celdaAccion =
+                document.createElement("td");
+
+            const enlace =
+                document.createElement("a");
+
+            enlace.href =
+                `${BASE_EXPEDIENTES}/documentos/${documento.idDocumento}`;
+
+            enlace.className =
+                "btn btn-sm btn-outline-secondary";
+
+            enlace.textContent = "Descargar";
+
+            celdaAccion.appendChild(enlace);
+            fila.appendChild(celdaAccion);
+
+            cuerpo.appendChild(fila);
+        });
+    }
+
+
+    function pintarHistorial(historial) {
+        const cuerpo =
+            document.getElementById("cuerpoHistorial");
+
+        cuerpo.replaceChildren();
+
+        if (historial.length === 0) {
+            const fila = document.createElement("tr");
+            const celda = document.createElement("td");
+
+            celda.colSpan = 5;
+            celda.className = "text-muted small";
+            celda.textContent =
+                "El expediente no registra movimientos de estado.";
+
+            fila.appendChild(celda);
+            cuerpo.appendChild(fila);
+
+            return;
+        }
+
+        historial.forEach((movimiento) => {
+            const fila = document.createElement("tr");
+
+            fila.appendChild(
+                crearCelda(
+                    formatearFechaHora(movimiento.fechaHora)
+                )
+            );
+
+            fila.appendChild(
+                crearCelda(
+                    movimiento.estadoAnterior
+                    ?? "Registro inicial"
+                )
+            );
+
+            fila.appendChild(
+                crearCelda(movimiento.estadoNuevo)
+            );
+
+            fila.appendChild(
+                crearCelda(movimiento.usuario)
+            );
+
+            fila.appendChild(
+                crearCelda(movimiento.justificacion)
+            );
+
+            cuerpo.appendChild(fila);
+        });
+    }
+
+
+    function pintarExpediente(expediente) {
+        pintarDatos(expediente);
+
+        pintarDocumentos(
+            expediente.documentos ?? []
+        );
+
+        pintarHistorial(
+            expediente.historial ?? []
+        );
+
+        contenidoExpediente.classList.remove("d-none");
+    }
+
+
+    async function leerMensajeError(respuesta) {
+        try {
+            const cuerpo = await respuesta.json();
+
+            if (cuerpo && cuerpo.mensaje) {
+                return cuerpo.mensaje;
+            }
+        } catch (error) {
+        }
+
+        return `El servidor respondió con el código ${respuesta.status}.`;
+    }
+
+
+    //HU-32 ESTÁ AQUI
+
+    function cargarEstadosCambio(estadoActual) {
+        campoNuevoEstado.replaceChildren();
+
+        const opcionInicial =
+            document.createElement("option");
+
+        opcionInicial.value = "";
+        opcionInicial.textContent =
+            "Seleccione el nuevo estado";
+
+        opcionInicial.selected = true;
+
+        campoNuevoEstado.appendChild(opcionInicial);
+
+        ESTADOS_DESALMACENAJE.forEach((estado) => {
+
+            if (estado === estadoActual) {
+                return;
+            }
+
+            const opcion =
+                document.createElement("option");
+
+            opcion.value = estado;
+            opcion.textContent = estado;
+
+            campoNuevoEstado.appendChild(opcion);
+        });
+    }
+
+
+    function limpiarCambioEstado() {
+        formularioCambioEstado.reset();
+
+        formularioCambioEstado.classList.remove(
+            "was-validated"
+        );
+
+        document.getElementById(
+            "contadorJustificacionEstado"
+        ).textContent = "0";
+    }
+
+
+    async function cambiarEstado(evento) {
+        evento.preventDefault();
+
+        ocultarAlerta();
+
+        formularioCambioEstado.classList.add(
+            "was-validated"
+        );
+
+        if (!formularioCambioEstado.checkValidity()) {
+            mostrarAlerta(
+                "danger",
+                "Seleccione el nuevo estado e indique la justificación de la actualización."
+            );
+
+            formularioCambioEstado
+                .querySelector(":invalid")
+                ?.focus();
+
+            return;
+        }
+
+        const datos = {
+            nuevoEstado:
+            campoNuevoEstado.value,
+
+            justificacion:
+                campoJustificacionEstado.value.trim(),
+
+            idUsuarioResponsable:
+            ID_USUARIO_RESPONSABLE
+        };
+
+        if (!API_DISPONIBLE) {
+
+            const estadoAnterior =
+                EXPEDIENTE_DEMO.estado;
+
+            EXPEDIENTE_DEMO.estado =
+                datos.nuevoEstado;
+
+            EXPEDIENTE_DEMO.historial.push({
+                estadoAnterior: estadoAnterior,
+                estadoNuevo: datos.nuevoEstado,
+                usuario: USUARIO_ACTUAL,
+                justificacion: datos.justificacion,
+                fechaHora: new Date().toISOString()
+            });
+
+            pintarExpediente(
+                EXPEDIENTE_DEMO
+            );
+
+            limpiarCambioEstado();
+
+            cargarEstadosCambio(
+                EXPEDIENTE_DEMO.estado
+            );
+
+            mostrarAlerta(
+                "success",
+                "Modo demostración: el cambio de estado se aplicó temporalmente."
+            );
+
+            return;
+        }
+
+        botonCambiarEstado.disabled = true;
+
+        try {
+            const respuesta = await fetch(
+                `${BASE_EXPEDIENTES}/${encodeURIComponent(referencia)}/estado`,
+                {
+                    method: "PUT",
+
+                    headers: {
+                        "Content-Type":
+                            "application/json"
+                    },
+
+                    body: JSON.stringify(datos)
+                }
+            );
+
+            if (!respuesta.ok) {
+                throw new Error(
+                    await leerMensajeError(respuesta)
+                );
+            }
+
+            const expediente =
+                await respuesta.json();
+
+            pintarExpediente(expediente);
+
+            cargarEstadosCambio(
+                expediente.estado
+            );
+
+            limpiarCambioEstado();
+
+            mostrarAlerta(
+                "success",
+                "El estado del trámite se actualizó correctamente."
+            );
+
+        } catch (error) {
+
+            mostrarAlerta(
+                "danger",
+                `No fue posible actualizar el estado. ${error.message}`
+            );
+
+        } finally {
+            botonCambiarEstado.disabled = false;
+        }
+    }
+
+
+    async function cargarExpediente() {
+        ocultarAlerta();
+
+        // DATOS PARA DEMOSTRAR MIENTRAS HU-032
+        if (!API_DISPONIBLE) {
+            pintarExpediente(EXPEDIENTE_DEMO);
+
+            cargarEstadosCambio(
+                EXPEDIENTE_DEMO.estado
+            );
+
+            mostrarAlerta(
+                "info",
+                "Modo demostración: los datos mostrados son de prueba y no se almacenan en la base de datos."
+            );
+
+            return;
+        }
+
+        try {
+            const respuesta = await fetch(
+                `${BASE_EXPEDIENTES}/${encodeURIComponent(referencia)}`
+            );
+
+            if (!respuesta.ok) {
+                throw new Error(
+                    await leerMensajeError(respuesta)
+                );
+            }
+
+            const expediente =
+                await respuesta.json();
+
+            pintarExpediente(expediente);
+
+            cargarEstadosCambio(
+                expediente.estado
+            );
+
+        } catch (error) {
+            mostrarAlerta(
+                "danger",
+                `No fue posible cargar el expediente. ${error.message}`
+            );
+        }
+    }
+
+    //DOCUMENTACION
+
+    function contarArchivosSeleccionados() {
+        return [
+            ...formularioDocumentos.querySelectorAll(
+                "input[type=file]"
+            )
+        ].reduce(
+            (total, campo) =>
+                total + campo.files.length,
+            0
+        );
+    }
+
+
+    async function agregarDocumentos(evento) {
+        evento.preventDefault();
+
+        ocultarAlerta();
+
+        if (contarArchivosSeleccionados() === 0) {
+            mostrarAlerta(
+                "warning",
+                "Seleccione al menos un archivo para agregarlo al expediente."
+            );
+
+            return;
+        }
+
+        const datos =
+            new FormData(formularioDocumentos);
+
+        datos.set(
+            "idUsuarioResponsable",
+            ID_USUARIO_RESPONSABLE
+        );
+
+        botonAgregar.disabled = true;
+
+        try {
+            const respuesta = await fetch(
+                `${BASE_EXPEDIENTES}/${encodeURIComponent(referencia)}/documentos`,
+                {
+                    method: "POST",
+                    body: datos
+                }
+            );
+
+            if (!respuesta.ok) {
+                throw new Error(
+                    await leerMensajeError(respuesta)
+                );
+            }
+
+            const expediente =
+                await respuesta.json();
+
+            pintarExpediente(expediente);
+
+            formularioDocumentos.reset();
+
+            mostrarAlerta(
+                "success",
+                "La documentación se agregó al expediente."
+            );
+
+        } catch (error) {
+
+            mostrarAlerta(
+                "danger",
+                `No fue posible agregar la documentación. ${error.message}`
+            );
+
+        } finally {
+            botonAgregar.disabled = false;
+        }
+    }
+
+
+    // INICIALIZAR
+
+    function inicializar() {
+        document.getElementById(
+            "usuarioNavbar"
+        ).textContent = USUARIO_ACTUAL;
+
+        if (!referencia && API_DISPONIBLE) {
+            mostrarAlerta(
+                "danger",
+                "No se indicó la referencia interna del expediente."
+            );
+
+            return;
+        }
+
+        formularioDocumentos.addEventListener(
+            "submit",
+            agregarDocumentos
+        );
+
+        formularioCambioEstado.addEventListener(
+            "submit",
+            cambiarEstado
+        );
+
+        campoJustificacionEstado.addEventListener(
+            "input",
+            () => {
+                document.getElementById(
+                    "contadorJustificacionEstado"
+                ).textContent =
+                    campoJustificacionEstado.value.length;
+            }
+        );
+
+        document.getElementById(
+            "btnLimpiarCambioEstado"
+        ).addEventListener(
+            "click",
+            limpiarCambioEstado
+        );
+
+        cargarExpediente();
+    }
+
+
+    inicializar(); </script>
+</body>
+</html>
