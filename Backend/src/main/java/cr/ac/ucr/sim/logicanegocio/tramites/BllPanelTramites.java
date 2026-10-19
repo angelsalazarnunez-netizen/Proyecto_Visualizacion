@@ -15,6 +15,7 @@ import java.time.temporal.ChronoUnit;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 /**
  * Autor: Equipo de Desarrollo SIM
@@ -31,6 +32,12 @@ import java.util.Map;
  *   - Nada se elimina: los trámites que salieron se consultan en el histórico con su bitácora.
  *   - El vencimiento de los trámites temporales usa la misma regla que la HU-025 y la HU-027:
  *     próximo a vencer a 45 días o menos.
+ *
+ * Historial de cambios:
+ *   Responsable: Equipo de Desarrollo SIM
+ *   Fecha: 19/10/2026
+ *   Descripción: restricciones por rol (HU-003). El panel puede limitarse a los tipos de trámite
+ *     que el usuario puede consultar; los indicadores se calculan sobre esos mismos trámites.
  */
 @Service
 public class BllPanelTramites {
@@ -75,12 +82,28 @@ public class BllPanelTramites {
      */
     @Transactional(readOnly = true)
     public ModeloPanelTramitesRespuesta ObtenerPanel(String pvc_Alcance) {
+        return this.ObtenerPanel(pvc_Alcance, null);
+    }
+
+    /**
+     * Autor: Equipo de Desarrollo SIM
+     * Fecha: 19/10/2026
+     * Descripción: Obtiene el panel de trámites limitado a los tipos de trámite indicados (HU-003).
+     *
+     * @param pvc_Alcance ACTIVOS (por defecto) o HISTORICO
+     * @param pvo_CodigosTipoPermitidos códigos de SIMM_TIPO_TRAMITE que se pueden mostrar; null
+     *   muestra todos
+     * @return panel con sus indicadores y trámites
+     */
+    @Transactional(readOnly = true)
+    public ModeloPanelTramitesRespuesta ObtenerPanel(String pvc_Alcance, Set<String> pvo_CodigosTipoPermitidos) {
         String vlc_Alcance = this.NormalizarAlcance(pvc_Alcance);
         LocalDate vld_Hoy = this.vgo_BllAlertaTemporal.Hoy();
 
         List<ModeloTramiteActivoRespuesta> vlo_LsActivos = this.vgo_DalPanelTramites
                 .SIMT_TRAMITE_ObtenerListaActivos()
                 .stream()
+                .filter(vlo_Fila -> this.TipoPermitido(vlo_Fila, pvo_CodigosTipoPermitidos))
                 .map(vlo_Fila -> this.ConvertirFila(vlo_Fila, vld_Hoy))
                 .sorted(this.OrdenOperativo())
                 .toList();
@@ -103,12 +126,28 @@ public class BllPanelTramites {
             vlo_Panel.setTramites(this.vgo_DalPanelTramites
                     .SIMT_TRAMITE_ObtenerListaHistorico(Constantes.LIMITE_HISTORICO_PANEL)
                     .stream()
+                    .filter(vlo_Fila -> this.TipoPermitido(vlo_Fila, pvo_CodigosTipoPermitidos))
                     .map(vlo_Fila -> this.ConvertirFila(vlo_Fila, vld_Hoy))
                     .toList());
         } else {
             vlo_Panel.setTramites(vlo_LsActivos);
         }
         return vlo_Panel;
+    }
+
+    /**
+     * Autor: Equipo de Desarrollo SIM
+     * Fecha: 19/10/2026
+     * Descripción: Indica si la fila es de un tipo de trámite que se puede mostrar.
+     *
+     * @param pvo_Fila fila consultada
+     * @param pvo_CodigosTipoPermitidos códigos permitidos; null permite todos
+     * @return verdadero si la fila se muestra
+     */
+    boolean TipoPermitido(EntFilaPanelTramite pvo_Fila, Set<String> pvo_CodigosTipoPermitidos) {
+        return pvo_CodigosTipoPermitidos == null
+                || (pvo_Fila.codigoTipoTramite() != null
+                        && pvo_CodigosTipoPermitidos.contains(pvo_Fila.codigoTipoTramite()));
     }
 
     /**

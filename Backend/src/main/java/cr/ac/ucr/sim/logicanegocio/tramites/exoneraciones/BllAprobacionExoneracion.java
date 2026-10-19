@@ -21,6 +21,7 @@ import cr.ac.ucr.sim.logicanegocio.autenticacion.ExcepcionAutenticacion;
 import cr.ac.ucr.sim.logicanegocio.autenticacion.ExcepcionNegocio;
 import cr.ac.ucr.sim.logicanegocio.tramites.BllBitacora;
 import cr.ac.ucr.sim.utilerias.Constantes;
+import cr.ac.ucr.sim.utilerias.Permisos;
 import cr.ac.ucr.sim.utilerias.modelo.exoneraciones.ModeloAprobacionPendienteRespuesta;
 import cr.ac.ucr.sim.utilerias.modelo.exoneraciones.ModeloAprobacionRespuesta;
 import cr.ac.ucr.sim.utilerias.modelo.exoneraciones.ModeloControlDocumentalRespuesta;
@@ -59,6 +60,12 @@ import java.util.Map;
  *     historial de estados y en la bitácora, y se notifica a la técnica que envió el expediente a
  *     aprobación. Si el correo no sale, la decisión igual queda registrada y la notificación queda
  *     marcada con error.
+ *
+ * Historial de cambios:
+ *   Responsable: Equipo de Desarrollo SIM
+ *   Fecha: 19/10/2026
+ *   Descripción: el código del permiso se toma de Permisos.EXONERACION_APROBAR, única fuente de
+ *     códigos de permiso (integración de restricciones por rol, HU-003).
  */
 @Service
 public class BllAprobacionExoneracion {
@@ -479,7 +486,7 @@ public class BllAprobacionExoneracion {
     private boolean EsUsuarioAutorizado(Integer pvn_IdUsuario) {
         return pvn_IdUsuario != null
                 && this.vgo_DalAutorizacion.SIMT_USUARIO_ROL_ObtenerPermisosActivos(pvn_IdUsuario)
-                .contains(Constantes.PERMISO_APROBAR_EXONERACION);
+                .contains(Permisos.EXONERACION_APROBAR);
     }
 
     /**

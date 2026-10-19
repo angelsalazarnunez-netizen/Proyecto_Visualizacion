@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
 
 import Cmp_SIM_Marco from "../../componentes/Cmp_SIM_Marco.jsx";
+import Cmp_SIM_ConPermiso from "../../componentes/seguridad/Cmp_SIM_ConPermiso.jsx";
+import { PERMISOS } from "../../utilerias/Permisos.js";
 import { Cmp_SIM_AyudaCampo } from "../../componentes/Cmp_SIM_Ayuda.jsx";
 import {
   descargarReporteConsultas,
@@ -21,6 +23,11 @@ import {
  *   Fecha: 05/10/2026
  *   Descripción: la pantalla pasa a admitir varios criterios de agrupación a la vez y a mostrar
  *     una tabla por criterio, con sus totales.
+ *
+ *   Responsable: Equipo de Desarrollo SIM
+ *   Fecha: 19/10/2026
+ *   Descripción: restricciones por rol (HU-003): los botones de exportar solo se muestran con
+ *     REPORTE_EXPORTAR.
  */
 
 const USUARIO_ACTUAL = "Agente de Aduanas";
@@ -431,16 +438,18 @@ function Frm_SIM_ReporteConsultas() {
               Periodo del {formatearFecha(filtrosDelReporte.fechaDesde)} al{" "}
               {formatearFecha(filtrosDelReporte.fechaHasta)} · {reporte.cantidadTramites} trámites
             </p>
-            <div className="d-print-none d-flex gap-2">
-              <button type="button" className="btn btn-outline-secondary" id="btnDescargarPdf"
-                      onClick={() => descargar("PDF")} disabled={descargando !== ""}>
-                {descargando === "PDF" ? "Exportando..." : "Exportar PDF"}
-              </button>
-              <button type="button" className="btn btn-outline-secondary" id="btnDescargarExcel"
-                      onClick={() => descargar("EXCEL")} disabled={descargando !== ""}>
-                {descargando === "EXCEL" ? "Exportando..." : "Exportar Excel"}
-              </button>
-            </div>
+            <Cmp_SIM_ConPermiso permisos={[PERMISOS.REPORTE_EXPORTAR]}>
+              <div className="d-print-none d-flex gap-2">
+                <button type="button" className="btn btn-outline-secondary" id="btnDescargarPdf"
+                        onClick={() => descargar("PDF")} disabled={descargando !== ""}>
+                  {descargando === "PDF" ? "Exportando..." : "Exportar PDF"}
+                </button>
+                <button type="button" className="btn btn-outline-secondary" id="btnDescargarExcel"
+                        onClick={() => descargar("EXCEL")} disabled={descargando !== ""}>
+                  {descargando === "EXCEL" ? "Exportando..." : "Exportar Excel"}
+                </button>
+              </div>
+            </Cmp_SIM_ConPermiso>
           </div>
 
           {reporte.bloques.map((bloque) => (

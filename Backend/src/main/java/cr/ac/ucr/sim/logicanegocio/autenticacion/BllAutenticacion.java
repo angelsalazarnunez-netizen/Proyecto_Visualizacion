@@ -8,6 +8,7 @@ import cr.ac.ucr.sim.entidadnegocio.autenticacion.EntSesion;
 import cr.ac.ucr.sim.entidadnegocio.autenticacion.EntUsuario;
 import cr.ac.ucr.sim.seguridad.TokenSesionUtil;
 import cr.ac.ucr.sim.utilerias.Constantes;
+import cr.ac.ucr.sim.utilerias.ConstantesSeguridad;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -76,6 +77,36 @@ public class BllAutenticacion {
         vlo_Respuesta.setMensaje(Constantes.MENSAJE_INICIO_SESION_EXITOSO);
         vlo_Respuesta.setRoles(vlo_Roles);
         vlo_Respuesta.setPermisos(vlo_Permisos);
+        return vlo_Respuesta;
+    }
+
+    /**
+     * Autor: Equipo de Desarrollo SIM
+     * Fecha: 19/10/2026
+     * Descripción: Obtiene los roles y permisos vigentes del usuario de la sesión (HU-003). Los
+     *   permisos efectivos son la unión de los permisos de sus roles activos, igual que al iniciar
+     *   sesión y que en FiltroAutenticacionToken.
+     *
+     * @param pvn_IdUsuario usuario de la sesión
+     * @return datos del usuario, roles y permisos, sin token
+     */
+    @Transactional(readOnly = true)
+    public EntRespuestaSesion ObtenerSesionActual(Integer pvn_IdUsuario) {
+        EntUsuario vlo_Usuario = pvn_IdUsuario == null
+                ? null
+                : this.vgo_DalUsuario.SIMF_USUARIO_ObtenerRegistro(pvn_IdUsuario);
+        if (vlo_Usuario == null) {
+            throw new ExcepcionAutenticacion(HttpStatus.UNAUTHORIZED, ConstantesSeguridad.MENSAJE_SESION_REQUERIDA);
+        }
+
+        EntRespuestaSesion vlo_Respuesta = new EntRespuestaSesion();
+        vlo_Respuesta.setIdUsuario(vlo_Usuario.getIdUsuario());
+        vlo_Respuesta.setNombreCompleto(vlo_Usuario.getNombreCompleto());
+        vlo_Respuesta.setCorreoInstitucional(vlo_Usuario.getCorreoInstitucional());
+        vlo_Respuesta.setRoles(this.vgo_DalAutorizacion
+                .SIMT_USUARIO_ROL_ObtenerRolesActivos(vlo_Usuario.getIdUsuario()));
+        vlo_Respuesta.setPermisos(this.vgo_DalAutorizacion
+                .SIMT_USUARIO_ROL_ObtenerPermisosActivos(vlo_Usuario.getIdUsuario()));
         return vlo_Respuesta;
     }
 

@@ -16,6 +16,11 @@ import { registrarCostosTramite } from "../servicios/Srv_SIM_Tramites.js";
  *   Descripción: el bodegaje se indica en colones (₡). Con soloImpuestosExonerados la exoneración
  *     muestra solo los impuestos exonerados: la Unidad indicó que el bodegaje, la partida y los
  *     impuestos pagados no son parte de la exoneración. Los datos ocultos no se modifican.
+ *
+ *   Responsable: Equipo de Desarrollo SIM
+ *   Fecha: 19/10/2026
+ *   Descripción: con soloLectura los costos se muestran sin poder modificarlos (restricciones por
+ *     rol, HU-003): quien solo consulta el expediente no tiene el permiso de modificarlo.
  */
 
 const FORMATO_COLONES = new Intl.NumberFormat("es-CR", {
@@ -58,7 +63,9 @@ const TIPOS_PARTIDO = [
   },
 ];
 
-function Cmp_SIM_CostosTramite({ referenciaInterna, expediente, alGuardar, soloImpuestosExonerados = false }) {
+function Cmp_SIM_CostosTramite({
+  referenciaInterna, expediente, alGuardar, soloImpuestosExonerados = false, soloLectura = false,
+}) {
   const [costos, setCostos] = useState(null);
   const [alerta, setAlerta] = useState(null);
   const [guardando, setGuardando] = useState(false);
@@ -121,84 +128,88 @@ function Cmp_SIM_CostosTramite({ referenciaInterna, expediente, alGuardar, soloI
         {alerta && <div className={`alert alert-${alerta.tipo}`} role="alert">{alerta.texto}</div>}
 
         <form onSubmit={guardar} noValidate>
-          <div className="row g-3">
-            {!soloImpuestosExonerados && (
-            <div className="col-12 col-md-6">
-              <label className="form-label" htmlFor="cmbTipoPartido">
-                Partido responsabilizado por el costo
-                <Cmp_SIM_AyudaCampo titulo="el partido responsabilizado">
-                  Es a quien se le carga el gasto del trámite: la propia Unidad de Importaciones, el
-                  partido que solicitó la importación, o una orden de compra. El reporte de consultas
-                  internas agrupa y filtra por este dato. Está en desarrollo: los demás tipos de
-                  trámite todavía no lo registran, así que el reporte los muestra como Sin registrar.
-                </Cmp_SIM_AyudaCampo>
-              </label>
-              <select className="form-select" id="cmbTipoPartido" value={costos.tipoPartidoResponsable}
-                      onChange={(evento) => {
-                        cambiar("tipoPartidoResponsable", evento.target.value);
-                        cambiar("partidoResponsable", "");
-                      }}>
-                <option value="">Sin indicar</option>
-                {TIPOS_PARTIDO.map((tipo) => (
-                  <option value={tipo.codigo} key={tipo.codigo}>{tipo.nombre}</option>
-                ))}
-              </select>
-            </div>
-            )}
-
-            {!soloImpuestosExonerados && tipoElegido?.pideDetalle && (
+          <fieldset disabled={soloLectura}>
+            <div className="row g-3">
+              {!soloImpuestosExonerados && (
               <div className="col-12 col-md-6">
-                <label className="form-label sim-requerido" htmlFor="txtDetallePartido">
-                  {tipoElegido.etiqueta}
+                <label className="form-label" htmlFor="cmbTipoPartido">
+                  Partido responsabilizado por el costo
+                  <Cmp_SIM_AyudaCampo titulo="el partido responsabilizado">
+                    Es a quien se le carga el gasto del trámite: la propia Unidad de Importaciones, el
+                    partido que solicitó la importación, o una orden de compra. El reporte de consultas
+                    internas agrupa y filtra por este dato. Está en desarrollo: los demás tipos de
+                    trámite todavía no lo registran, así que el reporte los muestra como Sin registrar.
+                  </Cmp_SIM_AyudaCampo>
                 </label>
-                <input type="text" className="form-control" id="txtDetallePartido" maxLength={120}
-                       placeholder={tipoElegido.ejemplo}
-                       value={costos.partidoResponsable}
-                       onChange={(evento) => cambiar("partidoResponsable", evento.target.value)} />
+                <select className="form-select" id="cmbTipoPartido" value={costos.tipoPartidoResponsable}
+                        onChange={(evento) => {
+                          cambiar("tipoPartidoResponsable", evento.target.value);
+                          cambiar("partidoResponsable", "");
+                        }}>
+                  <option value="">Sin indicar</option>
+                  {TIPOS_PARTIDO.map((tipo) => (
+                    <option value={tipo.codigo} key={tipo.codigo}>{tipo.nombre}</option>
+                  ))}
+                </select>
+              </div>
+              )}
+
+              {!soloImpuestosExonerados && tipoElegido?.pideDetalle && (
+                <div className="col-12 col-md-6">
+                  <label className="form-label sim-requerido" htmlFor="txtDetallePartido">
+                    {tipoElegido.etiqueta}
+                  </label>
+                  <input type="text" className="form-control" id="txtDetallePartido" maxLength={120}
+                         placeholder={tipoElegido.ejemplo}
+                         value={costos.partidoResponsable}
+                         onChange={(evento) => cambiar("partidoResponsable", evento.target.value)} />
+                </div>
+              )}
+
+              {!soloImpuestosExonerados && (
+              <div className="col-12 col-md-4">
+                <label className="form-label" htmlFor="numImpuestosPagados">Impuestos pagados</label>
+                <input type="number" className="form-control" id="numImpuestosPagados" min="0" step="0.01"
+                       value={costos.impuestosPagados}
+                       onChange={(evento) => cambiar("impuestosPagados", evento.target.value)} />
+              </div>
+              )}
+
+              <div className="col-12 col-md-4">
+                <label className="form-label" htmlFor="numImpuestosExonerados">Impuestos exonerados</label>
+                <input type="number" className="form-control" id="numImpuestosExonerados" min="0" step="0.01"
+                       value={costos.impuestosExonerados}
+                       onChange={(evento) => cambiar("impuestosExonerados", evento.target.value)} />
+              </div>
+
+              {!soloImpuestosExonerados && (
+              <div className="col-12 col-md-4">
+                <label className="form-label" htmlFor="numMontoBodegaje">
+                  Bodegaje (₡)
+                  <Cmp_SIM_AyudaCampo titulo="el bodegaje">
+                    El bodegaje se paga en colones. Digite el monto sin símbolo ni separadores de miles.
+                  </Cmp_SIM_AyudaCampo>
+                </label>
+                <div className="input-group">
+                  <span className="input-group-text" aria-hidden="true">₡</span>
+                  <input type="number" className="form-control" id="numMontoBodegaje" min="0" step="0.01"
+                         aria-describedby="txtBodegajeColones"
+                         value={costos.montoBodegaje}
+                         onChange={(evento) => cambiar("montoBodegaje", evento.target.value)} />
+                </div>
+                <div className="form-text" id="txtBodegajeColones">{formatearColones(costos.montoBodegaje)}</div>
+              </div>
+              )}
+            </div>
+
+            {!soloLectura && (
+              <div className="d-flex justify-content-end mt-3">
+                <button type="submit" className="btn btn-sim" id="btnGuardarCostos" disabled={guardando}>
+                  {guardando ? "Guardando..." : "Guardar costos"}
+                </button>
               </div>
             )}
-
-            {!soloImpuestosExonerados && (
-            <div className="col-12 col-md-4">
-              <label className="form-label" htmlFor="numImpuestosPagados">Impuestos pagados</label>
-              <input type="number" className="form-control" id="numImpuestosPagados" min="0" step="0.01"
-                     value={costos.impuestosPagados}
-                     onChange={(evento) => cambiar("impuestosPagados", evento.target.value)} />
-            </div>
-            )}
-
-            <div className="col-12 col-md-4">
-              <label className="form-label" htmlFor="numImpuestosExonerados">Impuestos exonerados</label>
-              <input type="number" className="form-control" id="numImpuestosExonerados" min="0" step="0.01"
-                     value={costos.impuestosExonerados}
-                     onChange={(evento) => cambiar("impuestosExonerados", evento.target.value)} />
-            </div>
-
-            {!soloImpuestosExonerados && (
-            <div className="col-12 col-md-4">
-              <label className="form-label" htmlFor="numMontoBodegaje">
-                Bodegaje (₡)
-                <Cmp_SIM_AyudaCampo titulo="el bodegaje">
-                  El bodegaje se paga en colones. Digite el monto sin símbolo ni separadores de miles.
-                </Cmp_SIM_AyudaCampo>
-              </label>
-              <div className="input-group">
-                <span className="input-group-text" aria-hidden="true">₡</span>
-                <input type="number" className="form-control" id="numMontoBodegaje" min="0" step="0.01"
-                       aria-describedby="txtBodegajeColones"
-                       value={costos.montoBodegaje}
-                       onChange={(evento) => cambiar("montoBodegaje", evento.target.value)} />
-              </div>
-              <div className="form-text" id="txtBodegajeColones">{formatearColones(costos.montoBodegaje)}</div>
-            </div>
-            )}
-          </div>
-
-          <div className="d-flex justify-content-end mt-3">
-            <button type="submit" className="btn btn-sim" id="btnGuardarCostos" disabled={guardando}>
-              {guardando ? "Guardando..." : "Guardar costos"}
-            </button>
-          </div>
+          </fieldset>
         </form>
       </div>
     </div>

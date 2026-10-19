@@ -8,6 +8,12 @@ import java.time.LocalDateTime;
 /**
  * Descripcion: representa los permisos, asociados a funcionalidades dentro
  * del Sistema de Importaciones.
+ *
+ * Historial de cambios:
+ *   Responsable: Equipo de Desarrollo SIM
+ *   Fecha: 19/10/2026
+ *   Descripción: se agrega el módulo de acceso al que pertenece el permiso (columna MODULO,
+ *     script 16-Modulos-Permisos-Roles-Base.sql; valores en Enumerados.ModuloPermiso).
  */
 @Entity
 @Table(
@@ -34,6 +40,9 @@ public class EntPermiso {
 
     @Column(name = "DESCRIPCION", length = 255)
     private String vgc_Descripcion;
+
+    @Column(name = "MODULO", length = 30)
+    private String vgc_Modulo;
 
     @Column(name = "ESTADO", nullable = false, length = 3)
     private String vgc_Estado;
@@ -98,6 +107,14 @@ public class EntPermiso {
 
     public void setDescripcion(String vlc_Descripcion) {
         this.vgc_Descripcion = vlc_Descripcion;
+    }
+
+    public String getModulo() {
+        return vgc_Modulo;
+    }
+
+    public void setModulo(String vlc_Modulo) {
+        this.vgc_Modulo = vlc_Modulo;
     }
 
     public String getEstado() {

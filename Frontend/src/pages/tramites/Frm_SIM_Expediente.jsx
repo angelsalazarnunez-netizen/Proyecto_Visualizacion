@@ -3,6 +3,11 @@ import { Link, useNavigate, useParams } from "react-router-dom";
 
 import Cmp_SIM_CambioReferencia from "../../componentes/Cmp_SIM_CambioReferencia.jsx";
 import Cmp_SIM_CostosTramite from "../../componentes/Cmp_SIM_CostosTramite.jsx";
+import {
+  Cmp_SIM_AvisoSoloConsulta,
+  useSesionActual,
+} from "../../componentes/seguridad/Cmp_SIM_ConPermiso.jsx";
+import { PERMISOS } from "../../utilerias/Permisos.js";
 import Cmp_SIM_ImprimirBitacora from "../../componentes/Cmp_SIM_ImprimirBitacora.jsx";
 import Cmp_SIM_Marco from "../../componentes/Cmp_SIM_Marco.jsx";
 import { Cmp_SIM_ListaArchivos } from "../../componentes/Cmp_SIM_Documentos.jsx";
@@ -24,6 +29,13 @@ import {
  *   datos del trámite, su documentación y su historial, permite actualizar el estado con una
  *   justificación obligatoria y agregar documentación posterior. Las actualizaciones no
  *   sustituyen ni eliminan la información anterior.
+ *
+ * Historial de cambios:
+ *   Responsable: Equipo de Desarrollo SIM
+ *   Fecha: 19/10/2026
+ *   Descripción: restricciones por rol (HU-003). Sin DESALMACENAJE_MODIFICAR el expediente es de
+ *     consulta: los datos y los costos se muestran sin poder cambiarlos, y no se ofrecen el cambio de
+ *     referencia, el cambio de estado ni agregar o eliminar documentos.
  */
 
 const USUARIO_ACTUAL = "Analista de Importaciones";
@@ -105,6 +117,8 @@ const ARCHIVOS_VACIOS = {
 };
 
 function Frm_SIM_Expediente() {
+  // Restricciones por rol (HU-003): sin el permiso de modificar, el expediente es de consulta.
+  const puedeModificar = useSesionActual().tieneAlguno([PERMISOS.DESALMACENAJE_MODIFICAR]);
   const { referenciaInterna } = useParams();
   const [expediente, setExpediente] = useState(null);
   const [estados, setEstados] = useState([]);
@@ -312,17 +326,20 @@ function Frm_SIM_Expediente() {
             <Link className="btn btn-outline-secondary btn-sm"
                   to={`/tramites/expedientes/${encodeURIComponent(expediente.referenciaInterna)}/documentacion`}>
               <i className="bi bi-folder2-open me-1" aria-hidden="true"></i>
-              Gestionar documentación
+              {puedeModificar ? "Gestionar documentación" : "Ver documentación"}
             </Link>
-            <Cmp_SIM_CambioReferencia referenciaInterna={expediente.referenciaInterna}
-                                      codigoTipoActual="DESALM_ESPECIAL"
-                                      onCambiado={irAlExpediente} />
+            {puedeModificar && (
+              <Cmp_SIM_CambioReferencia referenciaInterna={expediente.referenciaInterna}
+                                        codigoTipoActual="DESALM_ESPECIAL"
+                                        onCambiado={irAlExpediente} />
+            )}
             <span className={`badge fs-6 ${claseEstado(expediente.estado)}`}>{expediente.estado}</span>
           </div>
         </div>
       </section>
 
       {alerta && <div className={`alert alert-${alerta.tipo}`} role="alert">{alerta.texto}</div>}
+      {!puedeModificar && <Cmp_SIM_AvisoSoloConsulta />}
 
       <div className="card sim-card mb-4">
         <div className="card-header">
@@ -338,166 +355,173 @@ function Frm_SIM_Expediente() {
 
           {datos && (
             <form onSubmit={guardarDatos} noValidate>
-              <div className="row g-3">
-                <div className="col-12 col-md-6">
-                  <label className="form-label sim-requerido" htmlFor="txtOrigenDependencia">
-                    Origen o dependencia responsable
-                    <Cmp_SIM_AyudaCampo titulo="los datos del expediente">
-                      Corrija aquí lo que la dependencia aclare después del registro. Cada cambio
-                      queda en la bitácora con su valor anterior, su responsable y su fecha.
-                    </Cmp_SIM_AyudaCampo>
-                  </label>
-                  <input type="text" className="form-control" id="txtOrigenDependencia" maxLength={120}
-                         value={datos.origenDependencia}
-                         onChange={(evento) =>
-                           setDatos({ ...datos, origenDependencia: evento.target.value })} />
+              <fieldset disabled={!puedeModificar}>
+                <div className="row g-3">
+                  <div className="col-12 col-md-6">
+                    <label className="form-label sim-requerido" htmlFor="txtOrigenDependencia">
+                      Origen o dependencia responsable
+                      <Cmp_SIM_AyudaCampo titulo="los datos del expediente">
+                        Corrija aquí lo que la dependencia aclare después del registro. Cada cambio
+                        queda en la bitácora con su valor anterior, su responsable y su fecha.
+                      </Cmp_SIM_AyudaCampo>
+                    </label>
+                    <input type="text" className="form-control" id="txtOrigenDependencia" maxLength={120}
+                           value={datos.origenDependencia}
+                           onChange={(evento) =>
+                             setDatos({ ...datos, origenDependencia: evento.target.value })} />
+                  </div>
+
+                  <div className="col-12 col-md-3">
+                    <label className="form-label" htmlFor="txtPaisOrigen">País de origen</label>
+                    <input type="text" className="form-control" id="txtPaisOrigen" maxLength={50}
+                           value={datos.paisOrigen}
+                           onChange={(evento) => setDatos({ ...datos, paisOrigen: evento.target.value })} />
+                  </div>
+
+                  <div className="col-6 col-md-1">
+                    <label className="form-label" htmlFor="cmbMoneda">Moneda</label>
+                    <select className="form-select" id="cmbMoneda" value={datos.moneda}
+                            onChange={(evento) => setDatos({ ...datos, moneda: evento.target.value })}>
+                      <option value="">—</option>
+                      <option value="CRC">CRC</option>
+                      <option value="USD">USD</option>
+                      <option value="EUR">EUR</option>
+                    </select>
+                  </div>
+
+                  <div className="col-6 col-md-2">
+                    <label className="form-label" htmlFor="numValorEstimado">Valor estimado</label>
+                    <input type="number" className="form-control" id="numValorEstimado" min="0" step="0.01"
+                           value={datos.valorEstimado}
+                           onChange={(evento) =>
+                             setDatos({ ...datos, valorEstimado: evento.target.value })} />
+                  </div>
+
+                  <div className="col-12 col-md-6">
+                    <label className="form-label" htmlFor="txtRegimenAduanero">Régimen aduanero</label>
+                    <input type="text" className="form-control" id="txtRegimenAduanero" maxLength={60}
+                           value={datos.regimenAduanero}
+                           onChange={(evento) =>
+                             setDatos({ ...datos, regimenAduanero: evento.target.value })} />
+                  </div>
+
+                  <div className="col-12 col-md-6">
+                    <label className="form-label" htmlFor="txtAduanaControl">Aduana de control</label>
+                    <input type="text" className="form-control" id="txtAduanaControl" maxLength={60}
+                           value={datos.aduanaControl}
+                           onChange={(evento) =>
+                             setDatos({ ...datos, aduanaControl: evento.target.value })} />
+                  </div>
+
+                  <div className="col-12">
+                    <label className="form-label" htmlFor="txtDescripcion">Descripción de la mercancía</label>
+                    <input type="text" className="form-control" id="txtDescripcion" maxLength={255}
+                           value={datos.descripcion}
+                           onChange={(evento) => setDatos({ ...datos, descripcion: evento.target.value })} />
+                  </div>
+
+                  <div className="col-12">
+                    <label className="form-label sim-requerido" htmlFor="txtJustificacionDatos">
+                      Justificación del trámite
+                    </label>
+                    <textarea className="form-control" id="txtJustificacionDatos" rows={3} maxLength={1000}
+                              value={datos.justificacion}
+                              onChange={(evento) =>
+                                setDatos({ ...datos, justificacion: evento.target.value })} />
+                    <div className="form-text text-end">{datos.justificacion.length}/1000</div>
+                  </div>
+
+                  <div className="col-12">
+                    <label className="form-label" htmlFor="txtObservacionesDatos">Observaciones</label>
+                    <textarea className="form-control" id="txtObservacionesDatos" rows={2} maxLength={4000}
+                              value={datos.observaciones}
+                              onChange={(evento) =>
+                                setDatos({ ...datos, observaciones: evento.target.value })} />
+                  </div>
                 </div>
 
-                <div className="col-12 col-md-3">
-                  <label className="form-label" htmlFor="txtPaisOrigen">País de origen</label>
-                  <input type="text" className="form-control" id="txtPaisOrigen" maxLength={50}
-                         value={datos.paisOrigen}
-                         onChange={(evento) => setDatos({ ...datos, paisOrigen: evento.target.value })} />
-                </div>
-
-                <div className="col-6 col-md-1">
-                  <label className="form-label" htmlFor="cmbMoneda">Moneda</label>
-                  <select className="form-select" id="cmbMoneda" value={datos.moneda}
-                          onChange={(evento) => setDatos({ ...datos, moneda: evento.target.value })}>
-                    <option value="">—</option>
-                    <option value="CRC">CRC</option>
-                    <option value="USD">USD</option>
-                    <option value="EUR">EUR</option>
-                  </select>
-                </div>
-
-                <div className="col-6 col-md-2">
-                  <label className="form-label" htmlFor="numValorEstimado">Valor estimado</label>
-                  <input type="number" className="form-control" id="numValorEstimado" min="0" step="0.01"
-                         value={datos.valorEstimado}
-                         onChange={(evento) =>
-                           setDatos({ ...datos, valorEstimado: evento.target.value })} />
-                </div>
-
-                <div className="col-12 col-md-6">
-                  <label className="form-label" htmlFor="txtRegimenAduanero">Régimen aduanero</label>
-                  <input type="text" className="form-control" id="txtRegimenAduanero" maxLength={60}
-                         value={datos.regimenAduanero}
-                         onChange={(evento) =>
-                           setDatos({ ...datos, regimenAduanero: evento.target.value })} />
-                </div>
-
-                <div className="col-12 col-md-6">
-                  <label className="form-label" htmlFor="txtAduanaControl">Aduana de control</label>
-                  <input type="text" className="form-control" id="txtAduanaControl" maxLength={60}
-                         value={datos.aduanaControl}
-                         onChange={(evento) =>
-                           setDatos({ ...datos, aduanaControl: evento.target.value })} />
-                </div>
-
-                <div className="col-12">
-                  <label className="form-label" htmlFor="txtDescripcion">Descripción de la mercancía</label>
-                  <input type="text" className="form-control" id="txtDescripcion" maxLength={255}
-                         value={datos.descripcion}
-                         onChange={(evento) => setDatos({ ...datos, descripcion: evento.target.value })} />
-                </div>
-
-                <div className="col-12">
-                  <label className="form-label sim-requerido" htmlFor="txtJustificacionDatos">
-                    Justificación del trámite
-                  </label>
-                  <textarea className="form-control" id="txtJustificacionDatos" rows={3} maxLength={1000}
-                            value={datos.justificacion}
-                            onChange={(evento) =>
-                              setDatos({ ...datos, justificacion: evento.target.value })} />
-                  <div className="form-text text-end">{datos.justificacion.length}/1000</div>
-                </div>
-
-                <div className="col-12">
-                  <label className="form-label" htmlFor="txtObservacionesDatos">Observaciones</label>
-                  <textarea className="form-control" id="txtObservacionesDatos" rows={2} maxLength={4000}
-                            value={datos.observaciones}
-                            onChange={(evento) =>
-                              setDatos({ ...datos, observaciones: evento.target.value })} />
-                </div>
-              </div>
-
-              <div className="d-flex justify-content-end gap-2 mt-3">
-                <button type="button" className="btn btn-outline-secondary" id="btnDeshacerDatos"
-                        onClick={() => cargarDatos(expediente)}>
-                  Deshacer
-                </button>
-                <button type="submit" className="btn btn-sim" id="btnGuardarDatos" disabled={guardando}>
-                  {guardando ? "Guardando..." : "Guardar cambios"}
-                </button>
-              </div>
+                {puedeModificar && (
+                  <div className="d-flex justify-content-end gap-2 mt-3">
+                    <button type="button" className="btn btn-outline-secondary" id="btnDeshacerDatos"
+                            onClick={() => cargarDatos(expediente)}>
+                      Deshacer
+                    </button>
+                    <button type="submit" className="btn btn-sim" id="btnGuardarDatos" disabled={guardando}>
+                      {guardando ? "Guardando..." : "Guardar cambios"}
+                    </button>
+                  </div>
+                )}
+              </fieldset>
             </form>
           )}
         </div>
       </div>
 
       <Cmp_SIM_CostosTramite referenciaInterna={referenciaInterna} expediente={expediente}
+                             soloLectura={!puedeModificar}
                              alGuardar={() => obtenerExpediente(referenciaInterna).then((detalle) => {
                                setExpediente(detalle);
                                cargarDatos(detalle);
                              })} />
 
-      <div className="card sim-card mb-4">
-        <div className="card-header">
-          <i className="bi bi-arrow-repeat me-2" aria-hidden="true"></i>Actualizar estado del trámite
-        </div>
-        <div className="card-body">
-          <form onSubmit={actualizarEstado} noValidate>
-            <div className="row g-3">
-              <div className="col-12 col-md-6">
-                <label className="form-label sim-requerido" htmlFor="cmbNuevoEstado">
-                  Nuevo estado
-                  <Cmp_SIM_AyudaCampo titulo="el nuevo estado">
-                    La lista muestra los estados catalogados para este tipo de trámite, sin el estado
-                    actual del expediente.
-                  </Cmp_SIM_AyudaCampo>
-                </label>
-                <select className="form-select" id="cmbNuevoEstado" value={nuevoEstado}
-                        onChange={(evento) => setNuevoEstado(evento.target.value)}>
-                  <option value="">Seleccione el nuevo estado</option>
-                  {estadosDisponibles.map((estado) => (
-                    <option value={estado} key={estado}>{estado}</option>
-                  ))}
-                </select>
-              </div>
+      {puedeModificar && (
+        <div className="card sim-card mb-4">
+          <div className="card-header">
+            <i className="bi bi-arrow-repeat me-2" aria-hidden="true"></i>Actualizar estado del trámite
+          </div>
+          <div className="card-body">
+            <form onSubmit={actualizarEstado} noValidate>
+              <div className="row g-3">
+                <div className="col-12 col-md-6">
+                  <label className="form-label sim-requerido" htmlFor="cmbNuevoEstado">
+                    Nuevo estado
+                    <Cmp_SIM_AyudaCampo titulo="el nuevo estado">
+                      La lista muestra los estados catalogados para este tipo de trámite, sin el estado
+                      actual del expediente.
+                    </Cmp_SIM_AyudaCampo>
+                  </label>
+                  <select className="form-select" id="cmbNuevoEstado" value={nuevoEstado}
+                          onChange={(evento) => setNuevoEstado(evento.target.value)}>
+                    <option value="">Seleccione el nuevo estado</option>
+                    {estadosDisponibles.map((estado) => (
+                      <option value={estado} key={estado}>{estado}</option>
+                    ))}
+                  </select>
+                </div>
 
-              <div className="col-12">
-                <label className="form-label sim-requerido" htmlFor="txtJustificacionEstado">
-                  Nota, observación o justificación
-                  <Cmp_SIM_AyudaCampo titulo="la justificación del cambio">
-                    Explique el motivo del cambio de estado, entre {LONGITUD_MINIMA_JUSTIFICACION} y{" "}
-                    {LONGITUD_MAXIMA_JUSTIFICACION} caracteres. Queda en el historial y en la bitácora.
-                  </Cmp_SIM_AyudaCampo>
-                </label>
-                <textarea className="form-control" id="txtJustificacionEstado" rows={3}
-                          maxLength={LONGITUD_MAXIMA_JUSTIFICACION}
-                          placeholder="Indique el motivo o detalle de la actualización realizada."
-                          value={justificacion}
-                          onChange={(evento) => setJustificacion(evento.target.value)} />
-                <div className="form-text text-end">
-                  {justificacion.length}/{LONGITUD_MAXIMA_JUSTIFICACION}
+                <div className="col-12">
+                  <label className="form-label sim-requerido" htmlFor="txtJustificacionEstado">
+                    Nota, observación o justificación
+                    <Cmp_SIM_AyudaCampo titulo="la justificación del cambio">
+                      Explique el motivo del cambio de estado, entre {LONGITUD_MINIMA_JUSTIFICACION} y{" "}
+                      {LONGITUD_MAXIMA_JUSTIFICACION} caracteres. Queda en el historial y en la bitácora.
+                    </Cmp_SIM_AyudaCampo>
+                  </label>
+                  <textarea className="form-control" id="txtJustificacionEstado" rows={3}
+                            maxLength={LONGITUD_MAXIMA_JUSTIFICACION}
+                            placeholder="Indique el motivo o detalle de la actualización realizada."
+                            value={justificacion}
+                            onChange={(evento) => setJustificacion(evento.target.value)} />
+                  <div className="form-text text-end">
+                    {justificacion.length}/{LONGITUD_MAXIMA_JUSTIFICACION}
+                  </div>
                 </div>
               </div>
-            </div>
 
-            <div className="d-flex justify-content-end gap-2 mt-3">
-              <button type="button" className="btn btn-outline-secondary" id="btnLimpiarCambioEstado"
-                      onClick={() => { setNuevoEstado(""); setJustificacion(""); }}>
-                Limpiar
-              </button>
-              <button type="submit" className="btn btn-sim" id="btnCambiarEstado" disabled={guardando}>
-                <i className="bi bi-check-circle me-1" aria-hidden="true"></i>
-                Guardar actualización
-              </button>
-            </div>
-          </form>
+              <div className="d-flex justify-content-end gap-2 mt-3">
+                <button type="button" className="btn btn-outline-secondary" id="btnLimpiarCambioEstado"
+                        onClick={() => { setNuevoEstado(""); setJustificacion(""); }}>
+                  Limpiar
+                </button>
+                <button type="submit" className="btn btn-sim" id="btnCambiarEstado" disabled={guardando}>
+                  <i className="bi bi-check-circle me-1" aria-hidden="true"></i>
+                  Guardar actualización
+                </button>
+              </div>
+            </form>
+          </div>
         </div>
-      </div>
+      )}
 
       {documentacionPendiente.length > 0 && (
         <div className="alert alert-warning py-2" role="alert">
@@ -578,7 +602,7 @@ function Frm_SIM_Expediente() {
                              type="button">
                             Descargar
                           </button>
-                          {vigente && (
+                          {vigente && puedeModificar && (
                             <button type="button" className="btn btn-outline-danger"
                                     onClick={() => setDocumentoPorEliminar(documento)}>
                               <i className="bi bi-trash me-1" aria-hidden="true"></i>Eliminar
@@ -595,50 +619,52 @@ function Frm_SIM_Expediente() {
         </div>
       </div>
 
-      <div className="card sim-card mb-4">
-        <div className="card-header">
-          <i className="bi bi-cloud-arrow-up me-2" aria-hidden="true"></i>Agregar documentación
-        </div>
-        <div className="card-body">
-          <form onSubmit={adjuntarDocumentos} noValidate>
-            <div className="row g-3">
-              {[
-                { campo: "documentosRespaldo", etiqueta: "Justificación, acta o documento de respaldo", multiple: true },
-                { campo: "packingList", etiqueta: "Lista de empaque" },
-                { campo: "factura", etiqueta: "Factura o documento equivalente" },
-                { campo: "documentoEmbarque", etiqueta: "Documento de embarque" },
-              ].map(({ campo, etiqueta, multiple }) => (
-                <div className="col-12 col-md-6" key={campo}>
-                  <label className="form-label" htmlFor={`fil${campo}`}>
-                    {etiqueta} {!multiple && <span className="sim-opcional">(si aplica)</span>}
-                  </label>
-                  <input type="file" className="form-control" id={`fil${campo}`} multiple={Boolean(multiple)}
-                         onChange={(evento) => setArchivos((anterior) => ({
-                           ...anterior, [campo]: [...evento.target.files],
-                         }))} />
-                  <Cmp_SIM_ListaArchivos
-                    archivos={archivos[campo]}
-                    alQuitar={(indice) => setArchivos((anterior) => ({
-                      ...anterior,
-                      [campo]: anterior[campo].filter((_, posicion) => posicion !== indice),
-                    }))}
-                  />
-                </div>
-              ))}
-            </div>
+      {puedeModificar && (
+        <div className="card sim-card mb-4">
+          <div className="card-header">
+            <i className="bi bi-cloud-arrow-up me-2" aria-hidden="true"></i>Agregar documentación
+          </div>
+          <div className="card-body">
+            <form onSubmit={adjuntarDocumentos} noValidate>
+              <div className="row g-3">
+                {[
+                  { campo: "documentosRespaldo", etiqueta: "Justificación, acta o documento de respaldo", multiple: true },
+                  { campo: "packingList", etiqueta: "Lista de empaque" },
+                  { campo: "factura", etiqueta: "Factura o documento equivalente" },
+                  { campo: "documentoEmbarque", etiqueta: "Documento de embarque" },
+                ].map(({ campo, etiqueta, multiple }) => (
+                  <div className="col-12 col-md-6" key={campo}>
+                    <label className="form-label" htmlFor={`fil${campo}`}>
+                      {etiqueta} {!multiple && <span className="sim-opcional">(si aplica)</span>}
+                    </label>
+                    <input type="file" className="form-control" id={`fil${campo}`} multiple={Boolean(multiple)}
+                           onChange={(evento) => setArchivos((anterior) => ({
+                             ...anterior, [campo]: [...evento.target.files],
+                           }))} />
+                    <Cmp_SIM_ListaArchivos
+                      archivos={archivos[campo]}
+                      alQuitar={(indice) => setArchivos((anterior) => ({
+                        ...anterior,
+                        [campo]: anterior[campo].filter((_, posicion) => posicion !== indice),
+                      }))}
+                    />
+                  </div>
+                ))}
+              </div>
 
-            <div className="d-flex justify-content-end gap-2 mt-3">
-              <button type="button" className="btn btn-outline-secondary" id="btnLimpiarDocumentos"
-                      onClick={() => setArchivos(ARCHIVOS_VACIOS)}>
-                Limpiar
-              </button>
-              <button type="submit" className="btn btn-sim" id="btnAgregarDocumentos" disabled={guardando}>
-                <i className="bi bi-plus-circle me-1" aria-hidden="true"></i>Agregar al expediente
-              </button>
-            </div>
-          </form>
+              <div className="d-flex justify-content-end gap-2 mt-3">
+                <button type="button" className="btn btn-outline-secondary" id="btnLimpiarDocumentos"
+                        onClick={() => setArchivos(ARCHIVOS_VACIOS)}>
+                  Limpiar
+                </button>
+                <button type="submit" className="btn btn-sim" id="btnAgregarDocumentos" disabled={guardando}>
+                  <i className="bi bi-plus-circle me-1" aria-hidden="true"></i>Agregar al expediente
+                </button>
+              </div>
+            </form>
+          </div>
         </div>
-      </div>
+      )}
 
       <div className="card sim-card mb-5" id="seccionBitacora">
         <div className="card-header d-flex flex-wrap justify-content-between align-items-center gap-2">

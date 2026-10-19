@@ -2,6 +2,8 @@ import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 
 import Cmp_SIM_Marco from "../../componentes/Cmp_SIM_Marco.jsx";
+import Cmp_SIM_ConPermiso from "../../componentes/seguridad/Cmp_SIM_ConPermiso.jsx";
+import { PERMISOS } from "../../utilerias/Permisos.js";
 import { obtenerExpedientes } from "../../servicios/Srv_SIM_Tramites.js";
 
 /**
@@ -14,6 +16,11 @@ import { obtenerExpedientes } from "../../servicios/Srv_SIM_Tramites.js";
  *   Responsable: Josue Guevara Lostalo
  *   Fecha: 01/10/2026
  *   Descripción: se quita el acceso a las solicitudes de importación, que pasa al menú de trámites.
+ *
+ *   Responsable: Equipo de Desarrollo SIM
+ *   Fecha: 19/10/2026
+ *   Descripción: restricciones por rol (HU-003): el botón de registrar desalmacenaje solo se
+ *     muestra con DESALMACENAJE_CREAR.
  */
 
 const USUARIO_ACTUAL = "Analista de Importaciones";
@@ -112,10 +119,12 @@ function Lst_SIM_Expedientes() {
           <div>
             <h1 className="h4 mb-1">Expedientes de desalmacenaje especial</h1>
           </div>
-          <Link className="btn btn-sim" to="/tramites/desalmacenaje">
-            <i className="bi bi-plus-circle me-1" aria-hidden="true"></i>
-            Registrar desalmacenaje
-          </Link>
+          <Cmp_SIM_ConPermiso permisos={[PERMISOS.DESALMACENAJE_CREAR]}>
+            <Link className="btn btn-sim" to="/tramites/desalmacenaje">
+              <i className="bi bi-plus-circle me-1" aria-hidden="true"></i>
+              Registrar desalmacenaje
+            </Link>
+          </Cmp_SIM_ConPermiso>
         </div>
       </section>
 

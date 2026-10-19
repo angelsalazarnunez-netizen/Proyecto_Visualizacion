@@ -2,6 +2,8 @@ import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 
 import Cmp_SIM_Marco from "../../componentes/Cmp_SIM_Marco.jsx";
+import Cmp_SIM_ConPermiso from "../../componentes/seguridad/Cmp_SIM_ConPermiso.jsx";
+import { PERMISOS } from "../../utilerias/Permisos.js";
 import { obtenerSesion } from "../../servicios/Srv_SIM_Autenticacion.js";
 import { obtenerPedidosImportacion } from "../../servicios/Srv_SIM_Tramites.js";
 
@@ -15,6 +17,15 @@ function formatearFecha(fecha) {
     : "—";
 }
 
+/**
+ * Descripción: Lista de pedidos de importación (HU-006).
+ *
+ * Historial de cambios:
+ *   Responsable: Equipo de Desarrollo SIM
+ *   Fecha: 19/10/2026
+ *   Descripción: restricciones por rol (HU-003): el botón de registrar pedido solo se muestra con
+ *     IMPORTACION_CREAR, y el enlace de cada pedido dice «Ver» si no se tiene IMPORTACION_MODIFICAR.
+ */
 function Lst_SIM_Importaciones() {
   const [solicitudes, setSolicitudes] = useState([]);
   const [busqueda, setBusqueda] = useState("");
@@ -56,10 +67,12 @@ function Lst_SIM_Importaciones() {
               Busque por número, unidad, compañía o contratación; filtre también por estado.
             </p>
           </div>
-          <Link className="btn btn-sim" to="/tramites/importaciones/nueva">
-            <i className="bi bi-plus-circle me-1" aria-hidden="true"></i>
-            Registrar pedido
-          </Link>
+          <Cmp_SIM_ConPermiso permisos={[PERMISOS.IMPORTACION_CREAR]}>
+            <Link className="btn btn-sim" to="/tramites/importaciones/nueva">
+              <i className="bi bi-plus-circle me-1" aria-hidden="true"></i>
+              Registrar pedido
+            </Link>
+          </Cmp_SIM_ConPermiso>
         </div>
       </section>
 
@@ -128,7 +141,9 @@ function Lst_SIM_Importaciones() {
                         className="btn btn-sm btn-outline-secondary"
                         to={`/tramites/importaciones/${encodeURIComponent(solicitud.referenciaInterna)}`}
                       >
-                        Ver / actualizar
+                        <Cmp_SIM_ConPermiso permisos={[PERMISOS.IMPORTACION_MODIFICAR]} alterno="Ver">
+                          Ver / actualizar
+                        </Cmp_SIM_ConPermiso>
                       </Link>
                     </td>
                   </tr>

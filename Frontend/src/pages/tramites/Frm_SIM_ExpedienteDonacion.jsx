@@ -3,6 +3,11 @@ import { Link, useNavigate, useParams } from "react-router-dom";
 
 import Cmp_SIM_CambioReferencia from "../../componentes/Cmp_SIM_CambioReferencia.jsx";
 import Cmp_SIM_Marco from "../../componentes/Cmp_SIM_Marco.jsx";
+import {
+  Cmp_SIM_AvisoSoloConsulta,
+  useSesionActual,
+} from "../../componentes/seguridad/Cmp_SIM_ConPermiso.jsx";
+import { PERMISOS } from "../../utilerias/Permisos.js";
 import Cmp_SIM_ImprimirBitacora from "../../componentes/Cmp_SIM_ImprimirBitacora.jsx";
 import Cmp_SIM_Documentos, { contarArchivos } from "../../componentes/Cmp_SIM_Documentos.jsx";
 import { Cmp_SIM_AyudaCampo } from "../../componentes/Cmp_SIM_Ayuda.jsx";
@@ -44,6 +49,12 @@ import { claseEstadoDonacion, nombreTipoDonacion } from "./Lst_SIM_Donaciones.js
  *   Fecha: 18/10/2026
  *   Descripción: comentarios de la Unidad: se agrega el cambio de referencia (por ejemplo de D a
  *     DE después de que los agentes revisan la documentación) y la impresión del historial.
+ *
+ *   Responsable: Equipo de Desarrollo SIM
+ *   Fecha: 19/10/2026
+ *   Descripción: restricciones por rol (HU-003). Sin DONACION_MODIFICAR el expediente es de
+ *     consulta: no se ofrecen el cambio de referencia, el cambio de estado ni agregar o eliminar
+ *     documentos.
  */
 
 const LONGITUD_MAXIMA_JUSTIFICACION = 255;
@@ -128,6 +139,8 @@ function formatearFecha(valor) {
 }
 
 function Frm_SIM_ExpedienteDonacion() {
+  // Restricciones por rol (HU-003): sin el permiso de modificar, la pantalla es de consulta.
+  const puedeModificar = useSesionActual().tieneAlguno([PERMISOS.DONACION_MODIFICAR]);
   const { referenciaInterna } = useParams();
   const [expediente, setExpediente] = useState(null);
   const [estados, setEstados] = useState([]);
@@ -295,7 +308,7 @@ function Frm_SIM_ExpedienteDonacion() {
             <p className="mb-0 text-muted small">{expediente.tipoTramite}</p>
           </div>
           <div className="d-flex align-items-center gap-2">
-            {!cerrado && (
+            {!cerrado && puedeModificar && (
               <Cmp_SIM_CambioReferencia referenciaInterna={expediente.referenciaInterna}
                                         codigoTipoActual="DONACION"
                                         onCambiado={irAlExpediente} />
@@ -306,6 +319,8 @@ function Frm_SIM_ExpedienteDonacion() {
       </section>
 
       {alerta && <div className={`alert alert-${alerta.tipo}`} role="alert">{alerta.texto}</div>}
+
+      {!cerrado && !puedeModificar && <Cmp_SIM_AvisoSoloConsulta />}
 
       {cerrado && (
         <div className="alert alert-secondary" role="status">
@@ -355,7 +370,7 @@ function Frm_SIM_ExpedienteDonacion() {
         </div>
       </div>
 
-      {!cerrado && (
+      {!cerrado && puedeModificar && (
         <div className="card sim-card mb-4">
           <div className="card-header">
             <i className="bi bi-arrow-repeat me-2" aria-hidden="true"></i>Actualizar estado de la donación
@@ -481,7 +496,7 @@ function Frm_SIM_ExpedienteDonacion() {
                             }))}>
                             Descargar
                           </button>
-                          {vigente && !cerrado && (
+                          {vigente && !cerrado && puedeModificar && (
                             <button type="button" className="btn btn-outline-danger"
                                     onClick={() => setDocumentoPorEliminar(documento)}>
                               <i className="bi bi-trash me-1" aria-hidden="true"></i>Eliminar
@@ -498,7 +513,7 @@ function Frm_SIM_ExpedienteDonacion() {
         </div>
       </div>
 
-      {!cerrado && (
+      {!cerrado && puedeModificar && (
         <div className="card sim-card mb-4">
           <div className="card-header">
             <i className="bi bi-cloud-arrow-up me-2" aria-hidden="true"></i>Agregar documentación

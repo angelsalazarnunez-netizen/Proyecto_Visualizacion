@@ -2,8 +2,10 @@ package cr.ac.ucr.sim.sla;
 
 import cr.ac.ucr.sim.logicanegocio.autenticacion.ExcepcionNegocio;
 import cr.ac.ucr.sim.logicanegocio.autenticacion.ExcepcionAutenticacion;
+import cr.ac.ucr.sim.utilerias.ConstantesSeguridad;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
@@ -17,6 +19,12 @@ import java.util.stream.Collectors;
  * Fecha: 10/09/2026
  * Descripción: Traduce las excepciones de negocio a respuestas HTTP con un mensaje en español,
  *   sin exponer códigos internos ni nombres de tablas o de clases, según el estándar D06.
+ *
+ * Historial de cambios:
+ *   Responsable: Equipo de Desarrollo SIM
+ *   Fecha: 19/10/2026
+ *   Descripción: se traduce el rechazo de @PreAuthorize (restricciones por rol, HU-003) a un 403
+ *     con el mismo cuerpo {"mensaje": "..."} que el resto de los errores.
  */
 @RestControllerAdvice
 public class ManejadorExcepciones {
@@ -27,6 +35,22 @@ public class ManejadorExcepciones {
         Map<String, String> vlo_Cuerpo = new HashMap<>();
         vlo_Cuerpo.put("mensaje", pvo_Excepcion.getMessage());
         return ResponseEntity.status(pvo_Excepcion.getEstadoHttp()).body(vlo_Cuerpo);
+    }
+
+    /**
+     * Autor: Equipo de Desarrollo SIM
+     * Fecha: 19/10/2026
+     * Descripción: Reporta que el usuario no tiene el permiso que exige el servicio (@PreAuthorize).
+     *   Incluye AuthorizationDeniedException, que hereda de AccessDeniedException.
+     *
+     * @param pvo_Excepcion excepción de acceso denegado
+     * @return 403 con el mensaje para la persona usuaria
+     */
+    @ExceptionHandler(AccessDeniedException.class)
+    public ResponseEntity<Map<String, String>> ManejarAccesoDenegado(AccessDeniedException pvo_Excepcion) {
+        Map<String, String> vlo_Cuerpo = new HashMap<>();
+        vlo_Cuerpo.put("mensaje", ConstantesSeguridad.MENSAJE_ACCESO_DENEGADO);
+        return ResponseEntity.status(HttpStatus.FORBIDDEN).body(vlo_Cuerpo);
     }
 
     @ExceptionHandler(MethodArgumentNotValidException.class)

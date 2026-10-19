@@ -1,5 +1,8 @@
 package cr.ac.ucr.sim.sla;
 
+import cr.ac.ucr.sim.seguridad.ReglasAcceso;
+import cr.ac.ucr.sim.seguridad.SrvAutorizacion;
+import org.springframework.security.access.prepost.PreAuthorize;
 import cr.ac.ucr.sim.entidadnegocio.tramites.EntArchivoExportado;
 import cr.ac.ucr.sim.entidadnegocio.tramites.EntCambioEstado;
 import cr.ac.ucr.sim.entidadnegocio.tramites.EntCambioReferencia;
@@ -137,6 +140,12 @@ import java.util.Map;
  *   Descripción: el contrato SICOP de la exoneración es opcional y los permisos regulatorios
  *     se reemplazan por el expediente SICOP, la autorización EXONET, el DUA de aplicación, el
  *     comprobante de impuestos y otros documentos (comentarios de la Unidad).
+ *   Responsable: Equipo de Desarrollo SIM
+ *   Fecha: 19/10/2026
+ *   Descripción: restricciones por rol (HU-003). Cada servicio declara su permiso con
+ *     @PreAuthorize (ver ReglasAcceso). La búsqueda, sus opciones y su exportación muestran solo
+ *     los tipos de trámite que el usuario puede consultar (SrvAutorizacion); el cambio de
+ *     referencia, los costos y la descarga de documentos exigen el permiso del tipo del trámite.
  */
 @RestController
 @RequestMapping("/api/v1/tramites")
@@ -156,6 +165,7 @@ public class Ws_SIM_Tramites {
     private final BllReporte vgo_BllReporte;
     private final BllTramiteTemporal vgo_BllTramiteTemporal;
     private final BllAlertaTemporal vgo_BllAlertaTemporal;
+    private final SrvAutorizacion vgo_SrvAutorizacion;
 
     public Ws_SIM_Tramites(
             BllDesalmacenajeEspecial pvo_BllDesalmacenajeEspecial,
@@ -167,7 +177,8 @@ public class Ws_SIM_Tramites {
             BllCatalogo pvo_BllCatalogo,
             BllReporte pvo_BllReporte,
             BllTramiteTemporal pvo_BllTramiteTemporal,
-            BllAlertaTemporal pvo_BllAlertaTemporal) {
+            BllAlertaTemporal pvo_BllAlertaTemporal,
+            SrvAutorizacion pvo_SrvAutorizacion) {
         this.vgo_BllDesalmacenajeEspecial = pvo_BllDesalmacenajeEspecial;
         this.vgo_BllDonacion = pvo_BllDonacion;
         this.vgo_BllExoneracion = pvo_BllExoneracion;
@@ -178,6 +189,7 @@ public class Ws_SIM_Tramites {
         this.vgo_BllReporte = pvo_BllReporte;
         this.vgo_BllTramiteTemporal = pvo_BllTramiteTemporal;
         this.vgo_BllAlertaTemporal = pvo_BllAlertaTemporal;
+        this.vgo_SrvAutorizacion = pvo_SrvAutorizacion;
     }
 
     /**
@@ -198,6 +210,7 @@ public class Ws_SIM_Tramites {
      * @param pvo_LsAduanasControl aduanas de control
      * @return trámites encontrados
      */
+    @PreAuthorize(ReglasAcceso.CONSULTA_TRAMITES)
     @GetMapping("/busqueda")
     public ResponseEntity<List<EntResultadoBusquedaTramite>> SIMT_TRAMITE_ObtenerListaBusqueda(
             @RequestParam(value = "fechaDesde", required = false)
@@ -225,9 +238,18 @@ public class Ws_SIM_Tramites {
      *
      * @return opciones de la pantalla de búsqueda
      */
+    @PreAuthorize(ReglasAcceso.CONSULTA_TRAMITES)
     @GetMapping("/busqueda/opciones")
     public ResponseEntity<EntOpcionesBusquedaTramite> SIMT_TRAMITE_ObtenerOpcionesBusqueda() {
-        return ResponseEntity.ok(this.vgo_BllBusquedaTramite.ObtenerOpciones());
+        EntOpcionesBusquedaTramite vlo_Opciones = this.vgo_BllBusquedaTramite.ObtenerOpciones();
+        // Solo se ofrecen los tipos de trámite que el usuario puede consultar (HU-003).
+        if (vlo_Opciones.getTiposTramite() != null) {
+            vlo_Opciones.setTiposTramite(vlo_Opciones.getTiposTramite()
+                    .stream()
+                    .filter(vlo_Tipo -> this.vgo_SrvAutorizacion.PuedeConsultarTipo(vlo_Tipo.getCodigo()))
+                    .toList());
+        }
+        return ResponseEntity.ok(vlo_Opciones);
     }
 
     /**
@@ -248,6 +270,7 @@ public class Ws_SIM_Tramites {
      * @param pvo_LsAduanasControl aduanas de control
      * @return archivo del listado para su descarga
      */
+    @PreAuthorize(ReglasAcceso.CONSULTA_TRAMITES)
     @GetMapping("/busqueda/exportar/{pvc_Formato}")
     public ResponseEntity<byte[]> SIMT_TRAMITE_ExportarListaBusqueda(
             @PathVariable("pvc_Formato") String pvc_Formato,
@@ -277,6 +300,7 @@ public class Ws_SIM_Tramites {
                 .body(vlo_Archivo.getContenido());
     }
 
+    @PreAuthorize(ReglasAcceso.IMPORTACION_CREAR)
     @PostMapping("/importaciones")
     public ResponseEntity<EntRespuestaPedidoImportacion> SIMT_PEDIDO_PROV_InsertarRegistro(
             @Valid @RequestBody EntRegistroPedidoImportacion pvo_Registro,
@@ -288,12 +312,14 @@ public class Ws_SIM_Tramites {
         return ResponseEntity.status(HttpStatus.CREATED).body(vlo_Respuesta);
     }
 
+    @PreAuthorize(ReglasAcceso.IMPORTACION_CONSULTAR)
     @GetMapping("/importaciones")
     public ResponseEntity<List<EntResumenPedidoImportacion>> SIMT_PEDIDO_PROV_ObtenerLista(
             @AuthenticationPrincipal UsuarioAutenticado pvo_Usuario) {
         return ResponseEntity.ok(this.vgo_BllPedidoImportacion.ObtenerLista(pvo_Usuario.idUsuario()));
     }
 
+    @PreAuthorize(ReglasAcceso.IMPORTACION_CONSULTAR)
     @GetMapping("/importaciones/{pvc_Referencia}")
     public ResponseEntity<EntDetallePedidoImportacion> SIMT_PEDIDO_PROV_ObtenerRegistro(
             @PathVariable("pvc_Referencia") String pvc_Referencia,
@@ -305,6 +331,7 @@ public class Ws_SIM_Tramites {
                         pvo_Usuario.nombreCompleto()));
     }
 
+    @PreAuthorize(ReglasAcceso.IMPORTACION_MODIFICAR)
     @PutMapping("/importaciones/{pvc_Referencia}")
     public ResponseEntity<EntRespuestaPedidoImportacion> SIMT_PEDIDO_PROV_ModificarRegistro(
             @PathVariable("pvc_Referencia") String pvc_Referencia,
@@ -317,11 +344,13 @@ public class Ws_SIM_Tramites {
                 pvo_Usuario.nombreCompleto()));
     }
 
+    @PreAuthorize(ReglasAcceso.IMPORTACION_ACCESO)
     @GetMapping("/importaciones/catalogos")
     public ResponseEntity<EntCatalogosPedidoImportacion> SIMM_PEDIDO_PROV_ObtenerCatalogos() {
         return ResponseEntity.ok(this.vgo_BllPedidoImportacion.ObtenerCatalogos());
     }
 
+    @PreAuthorize(ReglasAcceso.IMPORTACION_NOTIFICACIONES)
     @GetMapping("/importaciones/notificaciones")
     public ResponseEntity<List<EntNotificacionPedidoImportacion>> SIMT_PEDIDO_PROV_ObtenerNotificaciones(
             @AuthenticationPrincipal UsuarioAutenticado pvo_Usuario) {
@@ -347,6 +376,7 @@ public class Ws_SIM_Tramites {
      * @param pvo_Usuario usuario de la sesión, que queda como responsable
      * @return confirmación del registro
      */
+    @PreAuthorize(ReglasAcceso.ADUANERO_TEMPORAL_CREAR)
     @PostMapping(path = RUTA_TRAMITE_TEMPORAL, consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<EntRespuestaTramiteTemporal> SIMT_TRAMITE_TEMPORAL_InsertarRegistro(
             @PathVariable("pvc_Tipo") String pvc_Tipo,
@@ -375,6 +405,7 @@ public class Ws_SIM_Tramites {
      * @param pvc_Alcance ACTIVOS, CERRADOS o TODOS
      * @return expedientes con su cuenta regresiva
      */
+    @PreAuthorize(ReglasAcceso.ADUANERO_TEMPORAL_CONSULTAR)
     @GetMapping(RUTA_TRAMITE_TEMPORAL)
     public ResponseEntity<List<EntResumenTramiteTemporal>> SIMT_TRAMITE_TEMPORAL_ObtenerLista(
             @PathVariable("pvc_Tipo") String pvc_Tipo,
@@ -397,6 +428,7 @@ public class Ws_SIM_Tramites {
      * @param pvc_Tipo importaciones-temporales o exportaciones-temporales
      * @return opciones de las pantallas
      */
+    @PreAuthorize(ReglasAcceso.ADUANERO_TEMPORAL_ACCESO)
     @GetMapping(RUTA_TRAMITE_TEMPORAL + "/opciones")
     public ResponseEntity<EntOpcionesTramiteTemporal> SIMT_TRAMITE_TEMPORAL_ObtenerOpciones(
             @PathVariable("pvc_Tipo") String pvc_Tipo) {
@@ -418,6 +450,7 @@ public class Ws_SIM_Tramites {
      * @param pvc_ReferenciaInterna referencia del expediente
      * @return expediente completo
      */
+    @PreAuthorize(ReglasAcceso.ADUANERO_TEMPORAL_CONSULTAR)
     @GetMapping(RUTA_TRAMITE_TEMPORAL + "/{pvc_ReferenciaInterna}")
     public ResponseEntity<EntExpedienteTramiteTemporal> SIMT_TRAMITE_TEMPORAL_ObtenerRegistro(
             @PathVariable("pvc_Tipo") String pvc_Tipo,
@@ -443,6 +476,7 @@ public class Ws_SIM_Tramites {
      * @param pvo_Usuario usuario de la sesión
      * @return expediente actualizado
      */
+    @PreAuthorize(ReglasAcceso.ADUANERO_TEMPORAL_MODIFICAR)
     @PutMapping(path = RUTA_TRAMITE_TEMPORAL + "/{pvc_ReferenciaInterna}/estado",
             consumes = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<EntExpedienteTramiteTemporal> SIMT_TRAMITE_TEMPORAL_ModificarEstado(
@@ -473,6 +507,7 @@ public class Ws_SIM_Tramites {
      * @param pvo_Usuario usuario de la sesión
      * @return expediente actualizado
      */
+    @PreAuthorize(ReglasAcceso.ADUANERO_TEMPORAL_MODIFICAR)
     @PutMapping(path = RUTA_TRAMITE_TEMPORAL + "/{pvc_ReferenciaInterna}/datos",
             consumes = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<EntExpedienteTramiteTemporal> SIMT_TRAMITE_TEMPORAL_ModificarRegistro(
@@ -498,6 +533,7 @@ public class Ws_SIM_Tramites {
      * @param pvo_Usuario usuario de la sesión
      * @return expediente actualizado
      */
+    @PreAuthorize(ReglasAcceso.ADUANERO_TEMPORAL_MODIFICAR)
     @PutMapping(path = RUTA_TRAMITE_TEMPORAL + "/{pvc_ReferenciaInterna}/prorroga",
             consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<EntExpedienteTramiteTemporal> SIMT_TRAMITE_TEMPORAL_RegistrarProrroga(
@@ -530,6 +566,7 @@ public class Ws_SIM_Tramites {
      * @param pvo_Usuario usuario de la sesión
      * @return expediente actualizado
      */
+    @PreAuthorize(ReglasAcceso.ADUANERO_TEMPORAL_MODIFICAR)
     @PostMapping(path = RUTA_TRAMITE_TEMPORAL + "/{pvc_ReferenciaInterna}/documentos",
             consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<EntExpedienteTramiteTemporal> SIMF_DOCUMENTO_InsertarRegistroTemporal(
@@ -559,6 +596,7 @@ public class Ws_SIM_Tramites {
      * @param pvo_Usuario usuario de la sesión
      * @return expediente actualizado
      */
+    @PreAuthorize(ReglasAcceso.ADUANERO_TEMPORAL_MODIFICAR)
     @DeleteMapping(RUTA_TRAMITE_TEMPORAL + "/{pvc_ReferenciaInterna}/documentos/{pvn_IdDocumento}")
     public ResponseEntity<EntExpedienteTramiteTemporal> SIMF_DOCUMENTO_EliminarRegistroTemporal(
             @PathVariable("pvc_Tipo") String pvc_Tipo,
@@ -584,6 +622,7 @@ public class Ws_SIM_Tramites {
      * @param pvn_IdDocumento identificador del documento
      * @return contenido del archivo
      */
+    @PreAuthorize(ReglasAcceso.CONSULTAR_DOCUMENTO)
     @GetMapping(RUTA_TRAMITE_TEMPORAL + "/documentos/{pvn_IdDocumento}")
     public ResponseEntity<byte[]> SIMF_DOCUMENTO_ObtenerArchivoTemporal(
             @PathVariable("pvc_Tipo") String pvc_Tipo,
@@ -613,6 +652,7 @@ public class Ws_SIM_Tramites {
      *
      * @return agentes disponibles
      */
+    @PreAuthorize(ReglasAcceso.ADUANERO_TEMPORAL_ACCESO)
     @GetMapping("/temporales/agentes")
     public ResponseEntity<List<EntAgenteTemporal>> SIMF_USUARIO_ObtenerAgentesTemporales() {
         return ResponseEntity.ok(this.vgo_BllTramiteTemporal.ObtenerAgentes());
@@ -626,6 +666,7 @@ public class Ws_SIM_Tramites {
      * @param pvo_Usuario usuario de la sesión
      * @return alertas del usuario
      */
+    @PreAuthorize(ReglasAcceso.ADUANERO_TEMPORAL_CONSULTAR)
     @GetMapping("/temporales/alertas")
     public ResponseEntity<List<EntResumenAlertaTemporal>> SIMT_ALERTA_TEMPORAL_ObtenerLista(
             @AuthenticationPrincipal UsuarioAutenticado pvo_Usuario) {
@@ -641,6 +682,7 @@ public class Ws_SIM_Tramites {
      * @param pvo_Usuario usuario de la sesión
      * @return alerta actualizada
      */
+    @PreAuthorize(ReglasAcceso.ADUANERO_TEMPORAL_MODIFICAR)
     @PutMapping("/temporales/alertas/{pvn_IdAlerta}/atendida")
     public ResponseEntity<EntResumenAlertaTemporal> SIMT_ALERTA_TEMPORAL_MarcarAtendida(
             @PathVariable("pvn_IdAlerta") Integer pvn_IdAlerta,
@@ -669,6 +711,7 @@ public class Ws_SIM_Tramites {
      * @param pvo_DocumentoEmbarque documento de embarque, si aplica
      * @return confirmación del registro del expediente
      */
+    @PreAuthorize(ReglasAcceso.DESALMACENAJE_CREAR)
     @PostMapping(path = "/desalmacenaje-especial", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<EntRespuestaDesalmacenaje> SIMT_DESALMACENAJE_ESPEC_InsertarRegistro(
             @RequestParam("referenciaInterna") String pvc_ReferenciaInterna,
@@ -713,6 +756,7 @@ public class Ws_SIM_Tramites {
      *
      * @return lista de expedientes
      */
+    @PreAuthorize(ReglasAcceso.DESALMACENAJE_CONSULTAR)
     @GetMapping("/desalmacenaje-especial")
     public ResponseEntity<List<EntExpedienteResumen>> SIMT_TRAMITE_ObtenerLista() {
         return ResponseEntity.ok(this.vgo_BllDesalmacenajeEspecial.ObtenerListaExpedientes());
@@ -726,6 +770,7 @@ public class Ws_SIM_Tramites {
      * @param pvc_ReferenciaInterna referencia interna del expediente
      * @return expediente completo
      */
+    @PreAuthorize(ReglasAcceso.DESALMACENAJE_CONSULTAR)
     @GetMapping("/desalmacenaje-especial/{pvc_ReferenciaInterna}")
     public ResponseEntity<EntExpedienteDetalle> SIMT_TRAMITE_ObtenerRegistro(
             @PathVariable("pvc_ReferenciaInterna") String pvc_ReferenciaInterna) {
@@ -746,6 +791,7 @@ public class Ws_SIM_Tramites {
      * @param pvo_DocumentoEmbarque documento de embarque, si aplica
      * @return expediente actualizado con toda su documentación
      */
+    @PreAuthorize(ReglasAcceso.DESALMACENAJE_MODIFICAR)
     @PostMapping(
             path = "/desalmacenaje-especial/{pvc_ReferenciaInterna}/documentos",
             consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
@@ -779,6 +825,7 @@ public class Ws_SIM_Tramites {
      *
      * @return estados disponibles
      */
+    @PreAuthorize(ReglasAcceso.DESALMACENAJE_ACCESO)
     @GetMapping("/desalmacenaje-especial/estados")
     public ResponseEntity<List<EntEstadoTramite>> SIMM_ESTADO_TRAMITE_ObtenerLista() {
         return ResponseEntity.ok(this.vgo_BllDesalmacenajeEspecial.ObtenerEstadosDisponibles());
@@ -794,6 +841,7 @@ public class Ws_SIM_Tramites {
      * @param pvo_Cambio estado nuevo, justificación y usuario responsable
      * @return expediente actualizado
      */
+    @PreAuthorize(ReglasAcceso.DESALMACENAJE_MODIFICAR)
     @PutMapping(path = "/desalmacenaje-especial/{pvc_ReferenciaInterna}/estado",
             consumes = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<EntExpedienteDetalle> SIMT_TRAMITE_ModificarEstado(
@@ -810,6 +858,7 @@ public class Ws_SIM_Tramites {
      * @param pvn_IdDocumento identificador del documento
      * @return contenido del archivo
      */
+    @PreAuthorize(ReglasAcceso.CONSULTAR_DOCUMENTO)
     @GetMapping("/desalmacenaje-especial/documentos/{pvn_IdDocumento}")
     public ResponseEntity<byte[]> SIMF_DOCUMENTO_ObtenerArchivo(
             @PathVariable("pvn_IdDocumento") Integer pvn_IdDocumento) {
@@ -848,6 +897,7 @@ public class Ws_SIM_Tramites {
      * @param pvo_DocumentoEmbarque documento de embarque, si aplica
      * @return confirmación del registro del expediente
      */
+    @PreAuthorize(ReglasAcceso.DONACION_CREAR)
     @PostMapping(path = "/donaciones", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<EntRespuestaDonacion> SIMT_DONACION_InsertarRegistro(
             @RequestParam("referenciaInterna") String pvc_ReferenciaInterna,
@@ -899,6 +949,7 @@ public class Ws_SIM_Tramites {
      *
      * @return lista de expedientes de donación
      */
+    @PreAuthorize(ReglasAcceso.DONACION_CONSULTAR)
     @GetMapping("/donaciones")
     public ResponseEntity<List<EntResumenDonacion>> SIMT_DONACION_ObtenerLista() {
         return ResponseEntity.ok(this.vgo_BllDonacion.ObtenerListaExpedientes());
@@ -912,6 +963,7 @@ public class Ws_SIM_Tramites {
      *
      * @return estados disponibles del trámite de donación
      */
+    @PreAuthorize(ReglasAcceso.DONACION_ACCESO)
     @GetMapping("/donaciones/estados")
     public ResponseEntity<List<EntEstadoTramite>> SIMM_ESTADO_TRAMITE_ObtenerListaDonacion() {
         return ResponseEntity.ok(this.vgo_BllDonacion.ObtenerEstadosDisponibles());
@@ -926,6 +978,7 @@ public class Ws_SIM_Tramites {
      * @param pvc_ReferenciaInterna referencia interna del expediente
      * @return expediente completo
      */
+    @PreAuthorize(ReglasAcceso.DONACION_CONSULTAR)
     @GetMapping("/donaciones/{pvc_ReferenciaInterna}")
     public ResponseEntity<EntExpedienteDonacion> SIMT_DONACION_ObtenerRegistro(
             @PathVariable("pvc_ReferenciaInterna") String pvc_ReferenciaInterna) {
@@ -942,6 +995,7 @@ public class Ws_SIM_Tramites {
      * @param pvo_Cambio nuevo estado, justificación, observaciones y usuario responsable
      * @return expediente actualizado con su documentación y su historial
      */
+    @PreAuthorize(ReglasAcceso.DONACION_MODIFICAR)
     @PutMapping(path = "/donaciones/{pvc_ReferenciaInterna}/estado",
             consumes = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<EntExpedienteDonacion> SIMT_DONACION_ModificarEstado(
@@ -966,6 +1020,7 @@ public class Ws_SIM_Tramites {
      * @param pvo_DocumentoEmbarque documento de embarque, si aplica
      * @return expediente actualizado con toda su documentación
      */
+    @PreAuthorize(ReglasAcceso.DONACION_MODIFICAR)
     @PostMapping(
             path = "/donaciones/{pvc_ReferenciaInterna}/documentos",
             consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
@@ -1006,6 +1061,7 @@ public class Ws_SIM_Tramites {
      * @param pvn_IdUsuarioResponsable usuario que realiza la acción
      * @return expediente con su documentación actualizada
      */
+    @PreAuthorize(ReglasAcceso.DONACION_MODIFICAR)
     @DeleteMapping("/donaciones/{pvc_ReferenciaInterna}/documentos/{pvn_IdDocumento}")
     public ResponseEntity<EntExpedienteDonacion> SIMF_DOCUMENTO_EliminarRegistroDonacion(
             @PathVariable("pvc_ReferenciaInterna") String pvc_ReferenciaInterna,
@@ -1026,6 +1082,7 @@ public class Ws_SIM_Tramites {
      * @param pvn_IdDocumento identificador del documento
      * @return contenido del archivo
      */
+    @PreAuthorize(ReglasAcceso.CONSULTAR_DOCUMENTO)
     @GetMapping("/donaciones/documentos/{pvn_IdDocumento}")
     public ResponseEntity<byte[]> SIMF_DOCUMENTO_ObtenerArchivoDonacion(
             @PathVariable("pvn_IdDocumento") Integer pvn_IdDocumento) {
@@ -1070,6 +1127,7 @@ public class Ws_SIM_Tramites {
      * @param pvo_LsOtrosDocumentos otros documentos de respaldo
      * @return confirmación del registro con la documentación pendiente
      */
+    @PreAuthorize(ReglasAcceso.EXONERACION_CREAR)
     @PostMapping(path = "/exoneraciones", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<EntRespuestaExoneracion> SIMT_EXONERACION_InsertarRegistro(
             @RequestParam("referenciaInterna") String pvc_ReferenciaInterna,
@@ -1123,6 +1181,7 @@ public class Ws_SIM_Tramites {
      * @param pvc_ReferenciaInterna referencia interna de la solicitud
      * @return expediente completo
      */
+    @PreAuthorize(ReglasAcceso.EXONERACION_CONSULTA_O_APROBACION)
     @GetMapping("/exoneraciones/{pvc_ReferenciaInterna}")
     public ResponseEntity<EntExoneracionDetalle> SIMT_EXONERACION_ObtenerRegistro(
             @PathVariable("pvc_ReferenciaInterna") String pvc_ReferenciaInterna) {
@@ -1149,6 +1208,7 @@ public class Ws_SIM_Tramites {
      * @param pvo_LsOtrosDocumentos otros documentos de respaldo
      * @return expediente actualizado
      */
+    @PreAuthorize(ReglasAcceso.EXONERACION_MODIFICAR)
     @PostMapping(path = "/exoneraciones/{pvc_ReferenciaInterna}/documentos",
             consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<EntExoneracionDetalle> SIMF_DOCUMENTO_InsertarRegistroExoneracion(
@@ -1184,6 +1244,7 @@ public class Ws_SIM_Tramites {
      * @param pvc_ReferenciaInterna referencia interna de la solicitud
      * @return registros vigentes de la bitácora
      */
+    @PreAuthorize(ReglasAcceso.EXONERACION_CONSULTA_O_APROBACION)
     @GetMapping("/exoneraciones/{pvc_ReferenciaInterna}/bitacora")
     public ResponseEntity<List<EntMovimientoBitacora>> SIML_BITACORA_ObtenerLista(
             @PathVariable("pvc_ReferenciaInterna") String pvc_ReferenciaInterna) {
@@ -1199,6 +1260,7 @@ public class Ws_SIM_Tramites {
      * @param pvo_Comentario texto del comentario y usuario que lo registra
      * @return bitácora vigente de la solicitud
      */
+    @PreAuthorize(ReglasAcceso.EXONERACION_MODIFICAR)
     @PostMapping(path = "/exoneraciones/{pvc_ReferenciaInterna}/bitacora/comentarios",
             consumes = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<List<EntMovimientoBitacora>> SIML_BITACORA_InsertarComentario(
@@ -1218,6 +1280,7 @@ public class Ws_SIM_Tramites {
      * @param pvn_IdUsuario usuario que elimina el comentario
      * @return bitácora vigente de la solicitud
      */
+    @PreAuthorize(ReglasAcceso.EXONERACION_MODIFICAR)
     @DeleteMapping("/exoneraciones/{pvc_ReferenciaInterna}/bitacora/comentarios/{pvn_IdBitacora}")
     public ResponseEntity<List<EntMovimientoBitacora>> SIML_BITACORA_EliminarComentario(
             @PathVariable("pvc_ReferenciaInterna") String pvc_ReferenciaInterna,
@@ -1286,7 +1349,8 @@ public class Ws_SIM_Tramites {
         vlo_Filtro.setFechaDesde(pvd_FechaDesde);
         vlo_Filtro.setFechaHasta(pvd_FechaHasta);
         vlo_Filtro.setReferenciaInterna(pvc_ReferenciaInterna);
-        vlo_Filtro.setIdTiposTramite(pvo_LsIdTiposTramite);
+        // La búsqueda se limita a los tipos de trámite que el usuario puede consultar (HU-003).
+        vlo_Filtro.setIdTiposTramite(this.vgo_SrvAutorizacion.RestringirTiposTramite(pvo_LsIdTiposTramite));
         vlo_Filtro.setCategoriasEstado(pvo_LsCategoriasEstado);
         vlo_Filtro.setIdMonedas(pvo_LsIdMonedas);
         vlo_Filtro.setRegimenesAduaneros(pvo_LsRegimenesAduaneros);
@@ -1309,6 +1373,7 @@ public class Ws_SIM_Tramites {
      * @param pvo_Correccion datos corregidos y usuario responsable
      * @return expediente con sus datos actualizados
      */
+    @PreAuthorize(ReglasAcceso.EXONERACION_MODIFICAR)
     @PutMapping(path = "/exoneraciones/{pvc_ReferenciaInterna}/datos",
             consumes = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<EntExoneracionDetalle> SIMT_EXONERACION_ModificarRegistro(
@@ -1331,6 +1396,7 @@ public class Ws_SIM_Tramites {
      * @param pvn_IdUsuarioResponsable usuario que realiza la acción
      * @return expediente con su documentación actualizada
      */
+    @PreAuthorize(ReglasAcceso.EXONERACION_MODIFICAR)
     @DeleteMapping("/exoneraciones/{pvc_ReferenciaInterna}/documentos/{pvn_IdDocumento}")
     public ResponseEntity<EntExoneracionDetalle> SIMF_DOCUMENTO_EliminarRegistroExoneracion(
             @PathVariable("pvc_ReferenciaInterna") String pvc_ReferenciaInterna,
@@ -1353,6 +1419,7 @@ public class Ws_SIM_Tramites {
      * @param pvo_Cambio referencia nueva, justificación y datos del tipo destino
      * @return referencia anterior y nueva, tipo resultante y si hubo reclasificación
      */
+    @PreAuthorize(ReglasAcceso.MODIFICAR_TRAMITE_POR_REFERENCIA)
     @PutMapping(path = "/{pvc_ReferenciaInterna}/referencia",
             consumes = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<EntRespuestaCambioReferencia> SIMT_TRAMITE_ModificarReferencia(
@@ -1374,6 +1441,7 @@ public class Ws_SIM_Tramites {
      * @param pvo_Clasificacion tipo de documento y usuario responsable
      * @return expediente con su documentación actualizada
      */
+    @PreAuthorize(ReglasAcceso.DESALMACENAJE_MODIFICAR)
     @PutMapping(path = "/desalmacenaje-especial/{pvc_ReferenciaInterna}/documentos/"
             + "{pvn_IdDocumento}/clasificacion", consumes = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<EntExpedienteDetalle> SIMF_DOCUMENTO_ModificarClasificacion(
@@ -1399,6 +1467,7 @@ public class Ws_SIM_Tramites {
      * @param pvo_Costos partido responsable, impuestos y bodegaje
      * @return confirmación del registro
      */
+    @PreAuthorize(ReglasAcceso.MODIFICAR_TRAMITE_POR_REFERENCIA)
     @PutMapping(path = "/{pvc_ReferenciaInterna}/costos", consumes = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<Map<String, Object>> SIMT_TRAMITE_ModificarCostos(
             @PathVariable("pvc_ReferenciaInterna") String pvc_ReferenciaInterna,
@@ -1424,6 +1493,7 @@ public class Ws_SIM_Tramites {
      *
      * @return tipos de trámite activos
      */
+    @PreAuthorize(ReglasAcceso.CON_SESION)
     @GetMapping("/catalogos/tipos-tramite")
     public ResponseEntity<List<EntTipoTramite>> SIMM_TIPO_TRAMITE_ObtenerLista() {
         return ResponseEntity.ok(this.vgo_BllCatalogo.ObtenerTiposTramite());
@@ -1437,6 +1507,7 @@ public class Ws_SIM_Tramites {
      *
      * @return tipos de documento activos
      */
+    @PreAuthorize(ReglasAcceso.CON_SESION)
     @GetMapping("/catalogos/tipos-documento")
     public ResponseEntity<List<EntTipoDocumento>> SIMM_TIPO_DOCUMENTO_ObtenerLista() {
         return ResponseEntity.ok(this.vgo_BllCatalogo.ObtenerTiposDocumento());
@@ -1452,6 +1523,7 @@ public class Ws_SIM_Tramites {
      * @param pvo_Estado estado documental, observaciones y usuario responsable
      * @return expediente con su estado documental actualizado
      */
+    @PreAuthorize(ReglasAcceso.DESALMACENAJE_MODIFICAR)
     @PutMapping(path = "/desalmacenaje-especial/{pvc_ReferenciaInterna}/estado-documental",
             consumes = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<EntExpedienteDetalle> SIMT_DESALMACENAJE_ESPEC_ModificarEstadoDocumental(
@@ -1485,6 +1557,7 @@ public class Ws_SIM_Tramites {
      * @param pvb_CombinarCriterios true para cruzar los criterios en una sola tabla
      * @return reporte tabulado con sus totales y desgloses
      */
+    @PreAuthorize(ReglasAcceso.REPORTE_CONSULTAR)
     @GetMapping("/reportes/consultas-internas")
     public ResponseEntity<EntReporteConsultas> SIMT_TRAMITE_ObtenerReporteConsultas(
             @RequestParam(value = "fechaDesde", required = false)
@@ -1550,6 +1623,7 @@ public class Ws_SIM_Tramites {
      * @param pvb_EnumerarTramites true para incluir la lista de trámites
      * @return archivo del reporte listo para descargar
      */
+    @PreAuthorize(ReglasAcceso.REPORTE_EXPORTAR)
     @GetMapping("/reportes/consultas-internas/exportar/{pvc_Formato}")
     public ResponseEntity<byte[]> SIMT_TRAMITE_ExportarReporteConsultas(
             @PathVariable("pvc_Formato") String pvc_Formato,
@@ -1606,6 +1680,7 @@ public class Ws_SIM_Tramites {
      * @param pvo_Correccion datos corregidos y usuario responsable
      * @return expediente con sus datos actualizados
      */
+    @PreAuthorize(ReglasAcceso.DESALMACENAJE_MODIFICAR)
     @PutMapping(path = "/desalmacenaje-especial/{pvc_ReferenciaInterna}/datos",
             consumes = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<EntExpedienteDetalle> SIMT_DESALMACENAJE_ESPEC_ModificarDatos(
@@ -1625,6 +1700,7 @@ public class Ws_SIM_Tramites {
      *
      * @return partidos registrados
      */
+    @PreAuthorize(ReglasAcceso.REPORTE_CONSULTAR)
     @GetMapping("/reportes/consultas-internas/partidos")
     public ResponseEntity<List<String>> SIMT_TRAMITE_ObtenerPartidosResponsables() {
         return ResponseEntity.ok(this.vgo_BllReporte.ObtenerPartidosResponsables());

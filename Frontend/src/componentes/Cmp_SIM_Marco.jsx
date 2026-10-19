@@ -2,8 +2,10 @@ import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 
 import { Cmp_SIM_BotonAyuda, Cmp_SIM_VentanaAyuda } from "./Cmp_SIM_Ayuda.jsx";
-import { cerrarSesion as cerrarSesionApi, obtenerSesion } from "../servicios/Srv_SIM_Autenticacion.js";
+import { cerrarSesion as cerrarSesionApi } from "../servicios/Srv_SIM_Autenticacion.js";
 import { obtenerNotificacionesPedidoImportacion } from "../servicios/Srv_SIM_Tramites.js";
+import { useSesionActual } from "./seguridad/Cmp_SIM_ConPermiso.jsx";
+import { ACCESOS } from "../utilerias/Permisos.js";
 
 /**
  * Autor: Katherine Susana Valverde Fallas
@@ -20,6 +22,12 @@ import { obtenerNotificacionesPedidoImportacion } from "../servicios/Srv_SIM_Tra
  *   Responsable: Josue Guevara Lostalo
  *   Fecha: 01/10/2026
  *   Descripción: el nombre del sistema lleva al menú de trámites.
+ *
+ *   Responsable: Equipo de Desarrollo SIM
+ *   Fecha: 19/10/2026
+ *   Descripción: restricciones por rol (HU-003). El botón de búsqueda solo se muestra a quien puede
+ *     consultar trámites, y las notificaciones de pagos (y su consulta periódica) solo a quien
+ *     gestiona pedidos de importación. La barra se actualiza si cambian los permisos de la sesión.
  */
 function Cmp_SIM_Marco({ usuario, ayuda, children }) {
   const [ayudaVisible, setAyudaVisible] = useState(false);
@@ -28,9 +36,17 @@ function Cmp_SIM_Marco({ usuario, ayuda, children }) {
   const [errorNotificaciones, setErrorNotificaciones] = useState("");
   const [panelNotificacionesVisible, setPanelNotificacionesVisible] = useState(false);
   const navegar = useNavigate();
-  const sesion = obtenerSesion();
+  const { sesion, tieneAlguno } = useSesionActual();
+  const verBusqueda = tieneAlguno(ACCESOS.CONSULTA_TRAMITES);
+  const verNotificaciones = tieneAlguno(ACCESOS.IMPORTACION_NOTIFICACIONES);
 
   useEffect(() => {
+    if (!verNotificaciones) {
+      setNotificaciones([]);
+      setErrorNotificaciones("");
+      setPanelNotificacionesVisible(false);
+      return undefined;
+    }
     let vigente = true;
     async function cargarNotificaciones() {
       try {
@@ -52,7 +68,7 @@ function Cmp_SIM_Marco({ usuario, ayuda, children }) {
       vigente = false;
       window.clearInterval(intervalo);
     };
-  }, []);
+  }, [verNotificaciones]);
 
   async function salir() {
     setErrorSesion("");
@@ -74,25 +90,29 @@ function Cmp_SIM_Marco({ usuario, ayuda, children }) {
           </Link>
 
           <div className="d-flex align-items-center gap-3 ms-auto">
-            <Link className="btn btn-sm btn-outline-light" to="/tramites/busqueda">
-              <i className="bi bi-search me-1" aria-hidden="true"></i>
-              Buscar trámites
-            </Link>
-            <button
-              className="btn btn-sm btn-outline-light position-relative"
-              type="button"
-              aria-expanded={panelNotificacionesVisible}
-              aria-controls="panel-notificaciones-importacion"
-              aria-label={`Notificaciones de importación: ${notificaciones.length}`}
-              onClick={() => setPanelNotificacionesVisible((visible) => !visible)}
-            >
-              <i className="bi bi-bell" aria-hidden="true"></i>
-              {notificaciones.length > 0 && (
-                <span className="position-absolute top-0 start-100 translate-middle badge rounded-pill text-bg-danger">
-                  {notificaciones.length}
-                </span>
-              )}
-            </button>
+            {verBusqueda && (
+              <Link className="btn btn-sm btn-outline-light" to="/tramites/busqueda">
+                <i className="bi bi-search me-1" aria-hidden="true"></i>
+                Buscar trámites
+              </Link>
+            )}
+            {verNotificaciones && (
+              <button
+                className="btn btn-sm btn-outline-light position-relative"
+                type="button"
+                aria-expanded={panelNotificacionesVisible}
+                aria-controls="panel-notificaciones-importacion"
+                aria-label={`Notificaciones de importación: ${notificaciones.length}`}
+                onClick={() => setPanelNotificacionesVisible((visible) => !visible)}
+              >
+                <i className="bi bi-bell" aria-hidden="true"></i>
+                {notificaciones.length > 0 && (
+                  <span className="position-absolute top-0 start-100 translate-middle badge rounded-pill text-bg-danger">
+                    {notificaciones.length}
+                  </span>
+                )}
+              </button>
+            )}
             {ayuda && <Cmp_SIM_BotonAyuda alPresionar={() => setAyudaVisible(true)} />}
             <span className="navbar-text small">
               <i className="bi bi-person-circle me-1" aria-hidden="true"></i>
@@ -105,7 +125,7 @@ function Cmp_SIM_Marco({ usuario, ayuda, children }) {
         </div>
       </nav>
 
-      {panelNotificacionesVisible && (
+      {verNotificaciones && panelNotificacionesVisible && (
         <section className="container mt-3" id="panel-notificaciones-importacion"
                  aria-label="Notificaciones de importación">
           <div className="card sim-card shadow-sm">

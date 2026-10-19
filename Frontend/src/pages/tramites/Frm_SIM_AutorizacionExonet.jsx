@@ -3,6 +3,11 @@ import { Link, useLocation, useParams } from "react-router-dom";
 
 import "./Frm_SIM_AutorizacionExonet.css";
 import Cmp_SIM_Marco from "../../componentes/Cmp_SIM_Marco.jsx";
+import Cmp_SIM_ConPermiso, {
+  Cmp_SIM_AvisoSoloConsulta,
+  useSesionActual,
+} from "../../componentes/seguridad/Cmp_SIM_ConPermiso.jsx";
+import { PERMISOS } from "../../utilerias/Permisos.js";
 import { Cmp_SIM_AyudaCampo } from "../../componentes/Cmp_SIM_Ayuda.jsx";
 import { obtenerSesion } from "../../servicios/Srv_SIM_Autenticacion.js";
 import {
@@ -29,6 +34,12 @@ import {
  *
  * Historial de cambios:
  *   05/10/2026 Equipo de Desarrollo SIM: creación de la pantalla.
+ *
+ *   Responsable: Equipo de Desarrollo SIM
+ *   Fecha: 19/10/2026
+ *   Descripción: restricciones por rol (HU-003). Sin EXONERACION_MODIFICAR la pantalla es de
+ *     consulta: se muestran la autorización vigente y el historial, sin el formulario ni las acciones
+ *     de anular, sustituir o completar.
  */
 
 const USUARIO_ACTUAL = "Técnica de Exoneraciones";
@@ -255,6 +266,8 @@ function datosParaEnviar(formulario, modo, vigente) {
 }
 
 function Frm_SIM_AutorizacionExonet() {
+  // Restricciones por rol (HU-003): sin el permiso de modificar, la pantalla es de consulta.
+  const puedeModificar = useSesionActual().tieneAlguno([PERMISOS.EXONERACION_MODIFICAR]);
   const { referenciaInterna } = useParams();
   const { state: estadoNavegacion } = useLocation();
   const idTramiteNavegacion = normalizarIdTramite(estadoNavegacion?.idTramite);
@@ -449,7 +462,7 @@ function Frm_SIM_AutorizacionExonet() {
   const migas = (
     <nav aria-label="Ruta de navegación">
       <ol className="breadcrumb small">
-        <li className="breadcrumb-item"><Link to="/tramites/exoneracion">Exoneraciones</Link></li>
+        <li className="breadcrumb-item"><Cmp_SIM_ConPermiso permisos={[PERMISOS.EXONERACION_CREAR]} alterno="Exoneraciones"><Link to="/tramites/exoneracion">Exoneraciones</Link></Cmp_SIM_ConPermiso></li>
         <li className="breadcrumb-item"><Link to={rutaExpediente}>{referenciaInterna}</Link></li>
         <li className="breadcrumb-item active" aria-current="page">Autorización EXONET</li>
       </ol>
@@ -543,6 +556,10 @@ function Frm_SIM_AutorizacionExonet() {
       </section>
 
       {alerta && <div className={`alert alert-${alerta.tipo}`} role="alert">{alerta.texto}</div>}
+      {!puedeModificar && (
+        <Cmp_SIM_AvisoSoloConsulta texto={"Usted puede consultar la autorización EXONET y su historial, pero sus "
+          + "roles no le permiten registrarla, completarla, anularla ni sustituirla."} />
+      )}
 
       {/* Autorización vigente y sus acciones. */}
       <div className="card sim-card mb-4 sim-autorizacion-vigente" id="seccionVigente">
@@ -607,7 +624,7 @@ function Frm_SIM_AutorizacionExonet() {
                 </div>
               )}
 
-              {modo === null && (
+              {modo === null && puedeModificar && (
                 <div className="d-flex flex-wrap justify-content-end gap-2 mt-3">
                   <button type="button" className="btn btn-outline-danger" id="btnAnular"
                           onClick={() => { setAlerta(null); setAnulacion({ motivo: "", error: null }); }}
@@ -631,7 +648,7 @@ function Frm_SIM_AutorizacionExonet() {
       </div>
 
       {/* Formulario: registrar, completar o sustituir. */}
-      {modo && (
+      {modo && puedeModificar && (
         <div className="card sim-card mb-4 sim-autorizacion-formulario" id="frmAutorizacion">
           <div className="card-header">
             <i className="bi bi-file-earmark-text me-2" aria-hidden="true"></i>{tituloFormulario}

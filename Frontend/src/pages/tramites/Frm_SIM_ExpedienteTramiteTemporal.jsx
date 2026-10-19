@@ -2,6 +2,11 @@ import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 
 import Cmp_SIM_Marco from "../../componentes/Cmp_SIM_Marco.jsx";
+import {
+  Cmp_SIM_AvisoSoloConsulta,
+  useSesionActual,
+} from "../../componentes/seguridad/Cmp_SIM_ConPermiso.jsx";
+import { PERMISOS } from "../../utilerias/Permisos.js";
 import Cmp_SIM_ImprimirBitacora from "../../componentes/Cmp_SIM_ImprimirBitacora.jsx";
 import Cmp_SIM_Documentos, { contarArchivos } from "../../componentes/Cmp_SIM_Documentos.jsx";
 import { Cmp_SIM_AyudaCampo } from "../../componentes/Cmp_SIM_Ayuda.jsx";
@@ -53,6 +58,12 @@ import {
  *
  * @param {object} props
  * @param {string} props.tipo importacion o exportacion
+ *
+ *   Responsable: Equipo de Desarrollo SIM
+ *   Fecha: 19/10/2026
+ *   Descripción: restricciones por rol (HU-003). Sin ADUANERO_TEMPORAL_MODIFICAR el expediente es
+ *     de consulta: los datos de aduana se muestran sin poder cambiarlos, y no se ofrecen el cambio de
+ *     estado, el registro de la prórroga (su historial sí se muestra) ni agregar o eliminar documentos.
  */
 
 const LONGITUD_MAXIMA_JUSTIFICACION = 255;
@@ -161,6 +172,8 @@ function Cmp_Hito({ titulo, fecha, detalle, children }) {
 }
 
 function Frm_SIM_ExpedienteTramiteTemporal({ tipo }) {
+  // Restricciones por rol (HU-003): sin el permiso de modificar, la pantalla es de consulta.
+  const puedeModificar = useSesionActual().tieneAlguno([PERMISOS.ADUANERO_TEMPORAL_MODIFICAR]);
   const configuracion = TIPOS_TRAMITE_TEMPORAL[tipo];
   const servicio = configuracion.servicio;
   const esExportacion = configuracion.esExportacion;
@@ -364,6 +377,8 @@ function Frm_SIM_ExpedienteTramiteTemporal({ tipo }) {
 
       {alerta && <div className={`alert alert-${alerta.tipo}`} role="alert">{alerta.texto}</div>}
 
+      {!puedeModificar && <Cmp_SIM_AvisoSoloConsulta />}
+
       {cerrado && (
         <div className="alert alert-secondary" role="status">
           <i className="bi bi-lock me-2" aria-hidden="true"></i>
@@ -421,7 +436,7 @@ function Frm_SIM_ExpedienteTramiteTemporal({ tipo }) {
         </div>
 
         <div className="col-12 col-lg-6">
-          {!cerrado ? (
+          {!cerrado && puedeModificar ? (
             <div className="card sim-card shadow-sm h-100">
               <div className="card-header">
                 <i className="bi bi-arrow-repeat me-2" aria-hidden="true"></i>Cambiar estado
@@ -456,7 +471,7 @@ function Frm_SIM_ExpedienteTramiteTemporal({ tipo }) {
                 </form>
               </div>
             </div>
-          ) : (
+          ) : cerrado && (
             <div className="card sim-card shadow-sm h-100">
               <div className="card-header">
                 <i className="bi bi-info-circle me-2" aria-hidden="true"></i>Cierre
@@ -526,128 +541,132 @@ function Frm_SIM_ExpedienteTramiteTemporal({ tipo }) {
         </div>
         <div className="card-body">
           <form onSubmit={guardarDatos} noValidate>
-            <h2 className="h6 text-muted">{configuracion.seccionInicio}</h2>
-            <div className="row g-3 mb-4">
-              <Cmp_Campo id="txtAduanaControl" etiqueta="Aduana de control" valor={datos.aduanaControl} maxLength={60}
-                         alCambiar={(valor) => cambiarDato("aduanaControl", valor)} deshabilitado={cerrado} />
-              <Cmp_Campo id="txtNumeroFactura" etiqueta="Número de factura del exportador" valor={datos.numeroFactura}
-                         maxLength={80} placeholder={esExportacion ? "Por ejemplo, 002-2025" : "SR si no trae factura"}
-                         alCambiar={(valor) => cambiarDato("numeroFactura", valor)} deshabilitado={cerrado} />
-              <Cmp_Campo id="txtOficioAduana" etiqueta="Oficio enviado a la aduana" valor={datos.oficioAduana}
-                         maxLength={120} placeholder="Oficio o correo con su fecha"
-                         alCambiar={(valor) => cambiarDato("oficioAduana", valor)} deshabilitado={cerrado} />
-              <Cmp_Campo id="txtNumeroGestion" etiqueta="Número de gestión" valor={datos.numeroGestion} maxLength={80}
-                         alCambiar={(valor) => cambiarDato("numeroGestion", valor)} deshabilitado={cerrado} />
-              <Cmp_Campo id="txtResolucionAutorizacion" etiqueta="Resolución de autorización"
-                         valor={datos.resolucionAutorizacion} maxLength={120}
-                         alCambiar={(valor) => cambiarDato("resolucionAutorizacion", valor)} deshabilitado={cerrado} />
-              {esExportacion && (
-                <Cmp_Campo id="txtOficioNotificacionUsuario" etiqueta="Oficio de notificación al usuario"
-                           valor={datos.oficioNotificacionUsuario} maxLength={120}
-                           alCambiar={(valor) => cambiarDato("oficioNotificacionUsuario", valor)} deshabilitado={cerrado} />
-              )}
-              <Cmp_Campo id="dtpFechaVencimiento" tipo="date" valor={datos.fechaVencimiento}
-                         etiqueta={esExportacion ? "Fecha de vencimiento del régimen" : "Fecha de vencimiento autorizada"}
-                         alCambiar={(valor) => cambiarDato("fechaVencimiento", valor)} deshabilitado={cerrado} />
-              <Cmp_Campo id="txtNumeroDuaInicio" etiqueta={`Número del ${nombreDuaInicio}`}
-                         valor={datos.numeroDuaInicio} maxLength={80}
-                         alCambiar={(valor) => cambiarDato("numeroDuaInicio", valor)} deshabilitado={cerrado} />
-              <Cmp_Campo id="dtpFechaDuaInicio" etiqueta={`Fecha del ${nombreDuaInicio}`} tipo="date" max={hoy}
-                         valor={datos.fechaDuaInicio}
-                         alCambiar={(valor) => cambiarDato("fechaDuaInicio", valor)} deshabilitado={cerrado} />
-              {esExportacion && (
-                <Cmp_Campo id="txtNotificacionDuaAduana" etiqueta="Notificación del DUA de salida a la aduana"
-                           valor={datos.notificacionDuaAduana} maxLength={120} placeholder="Por ejemplo, correo 17-03-2025"
-                           alCambiar={(valor) => cambiarDato("notificacionDuaAduana", valor)} deshabilitado={cerrado} />
-              )}
-            </div>
-
-            <h2 className="h6 text-muted">{configuracion.seccionCierre}</h2>
-            {esExportacion && (
-              <p className="small text-muted mb-2">
-                Referencia de reimportación:{" "}
-                <span className="sim-referencia">{configuracion.prefijoReimportacion}{expediente.referenciaInterna}</span>
-              </p>
-            )}
-            <div className="row g-3">
-              {esExportacion && (
-                <>
-                  <Cmp_Campo id="txtSolicitudIngreso" etiqueta="Solicitud de reingreso del usuario"
-                             valor={datos.solicitudIngreso} maxLength={120} placeholder="Oficio o correo"
-                             alCambiar={(valor) => cambiarDato("solicitudIngreso", valor)} deshabilitado={cerrado} />
-                  <Cmp_Campo id="dtpFechaReingreso" etiqueta="Fecha de reingreso al país" tipo="date" max={hoy}
-                             valor={datos.fechaReingreso}
-                             alCambiar={(valor) => cambiarDato("fechaReingreso", valor)} deshabilitado={cerrado} />
-                  <Cmp_Campo id="txtDocumentoEmbarque" etiqueta="Número del documento de embarque"
-                             valor={datos.documentoEmbarque} maxLength={80} placeholder="Guía aérea o conocimiento de embarque"
-                             alCambiar={(valor) => cambiarDato("documentoEmbarque", valor)} deshabilitado={cerrado} />
-                </>
-              )}
-              <Cmp_Campo id="txtNumeroDuaCierre" etiqueta={`Número del ${nombreDuaCierre}`}
-                         valor={datos.numeroDuaCierre} maxLength={80}
-                         alCambiar={(valor) => cambiarDato("numeroDuaCierre", valor)} />
-              <Cmp_Campo id="dtpFechaDuaCierre" etiqueta={`Fecha del ${nombreDuaCierre}`} tipo="date" max={hoy}
-                         valor={datos.fechaDuaCierre} alCambiar={(valor) => cambiarDato("fechaDuaCierre", valor)} />
-              {esExportacion && (
-                <Cmp_Campo id="dtpFechaDesalmacenaje" etiqueta="Fecha de desalmacenaje" tipo="date" max={hoy}
-                           valor={datos.fechaDesalmacenaje}
-                           alCambiar={(valor) => cambiarDato("fechaDesalmacenaje", valor)} deshabilitado={cerrado} />
-              )}
-              {esExportacion && (
-                <div className="col-md-6">
-                  <label className="form-label" htmlFor="cmbPagaImpuestosReimportacion">
-                    ¿La reimportación paga impuestos?
-                    <Cmp_SIM_AyudaCampo titulo="los impuestos de la reimportación">
-                      Sí, cuando se pagan impuestos por los trabajos hechos al equipo en el exterior.
-                      No, cuando la reparación fue por garantía y no se pagan.
-                    </Cmp_SIM_AyudaCampo>
-                  </label>
-                  <select className="form-select" id="cmbPagaImpuestosReimportacion" disabled={cerrado}
-                          value={datos.pagaImpuestosReimportacion}
-                          onChange={(evento) => cambiarDato("pagaImpuestosReimportacion", evento.target.value)}>
-                    <option value="">Sin indicar</option>
-                    <option value="SI">Sí, por los trabajos realizados</option>
-                    <option value="NO">No, por garantía</option>
-                  </select>
-                </div>
-              )}
-              {esExportacion && datos.pagaImpuestosReimportacion === "SI" && (
-                <div className="col-md-6">
-                  <label className="form-label" htmlFor="numMontoImpuestosReimportacion">
-                    Impuestos pagados en la reimportación (₡)
-                  </label>
-                  <div className="input-group">
-                    <span className="input-group-text" aria-hidden="true">₡</span>
-                    <input type="number" className="form-control" id="numMontoImpuestosReimportacion"
-                           min="0" step="0.01" disabled={cerrado}
-                           value={datos.montoImpuestosReimportacion}
-                           onChange={(evento) => cambiarDato("montoImpuestosReimportacion", evento.target.value)} />
-                  </div>
-                </div>
-              )}
-              <Cmp_Campo id="txtCancelacionRegimen" etiqueta="Oficio de cancelación del régimen"
-                         valor={datos.cancelacionRegimen} maxLength={120} placeholder="Oficio o correo"
-                         alCambiar={(valor) => cambiarDato("cancelacionRegimen", valor)} deshabilitado={cerrado} />
-              <Cmp_Campo id="dtpFechaCancelacion" etiqueta="Fecha de cancelación del régimen" tipo="date" max={hoy}
-                         valor={datos.fechaCancelacion}
-                         alCambiar={(valor) => cambiarDato("fechaCancelacion", valor)} deshabilitado={cerrado} />
-              <div className="col-12">
-                <label className="form-label" htmlFor="txtObservaciones">Observaciones</label>
-                <textarea className="form-control" id="txtObservaciones" rows={2} disabled={cerrado}
-                          maxLength={LONGITUD_MAXIMA_OBSERVACIONES} placeholder="Notas de seguimiento del trámite."
-                          value={datos.observaciones} onChange={(evento) => cambiarDato("observaciones", evento.target.value)} />
+            <fieldset disabled={!puedeModificar}>
+              <h2 className="h6 text-muted">{configuracion.seccionInicio}</h2>
+              <div className="row g-3 mb-4">
+                <Cmp_Campo id="txtAduanaControl" etiqueta="Aduana de control" valor={datos.aduanaControl} maxLength={60}
+                           alCambiar={(valor) => cambiarDato("aduanaControl", valor)} deshabilitado={cerrado} />
+                <Cmp_Campo id="txtNumeroFactura" etiqueta="Número de factura del exportador" valor={datos.numeroFactura}
+                           maxLength={80} placeholder={esExportacion ? "Por ejemplo, 002-2025" : "SR si no trae factura"}
+                           alCambiar={(valor) => cambiarDato("numeroFactura", valor)} deshabilitado={cerrado} />
+                <Cmp_Campo id="txtOficioAduana" etiqueta="Oficio enviado a la aduana" valor={datos.oficioAduana}
+                           maxLength={120} placeholder="Oficio o correo con su fecha"
+                           alCambiar={(valor) => cambiarDato("oficioAduana", valor)} deshabilitado={cerrado} />
+                <Cmp_Campo id="txtNumeroGestion" etiqueta="Número de gestión" valor={datos.numeroGestion} maxLength={80}
+                           alCambiar={(valor) => cambiarDato("numeroGestion", valor)} deshabilitado={cerrado} />
+                <Cmp_Campo id="txtResolucionAutorizacion" etiqueta="Resolución de autorización"
+                           valor={datos.resolucionAutorizacion} maxLength={120}
+                           alCambiar={(valor) => cambiarDato("resolucionAutorizacion", valor)} deshabilitado={cerrado} />
+                {esExportacion && (
+                  <Cmp_Campo id="txtOficioNotificacionUsuario" etiqueta="Oficio de notificación al usuario"
+                             valor={datos.oficioNotificacionUsuario} maxLength={120}
+                             alCambiar={(valor) => cambiarDato("oficioNotificacionUsuario", valor)} deshabilitado={cerrado} />
+                )}
+                <Cmp_Campo id="dtpFechaVencimiento" tipo="date" valor={datos.fechaVencimiento}
+                           etiqueta={esExportacion ? "Fecha de vencimiento del régimen" : "Fecha de vencimiento autorizada"}
+                           alCambiar={(valor) => cambiarDato("fechaVencimiento", valor)} deshabilitado={cerrado} />
+                <Cmp_Campo id="txtNumeroDuaInicio" etiqueta={`Número del ${nombreDuaInicio}`}
+                           valor={datos.numeroDuaInicio} maxLength={80}
+                           alCambiar={(valor) => cambiarDato("numeroDuaInicio", valor)} deshabilitado={cerrado} />
+                <Cmp_Campo id="dtpFechaDuaInicio" etiqueta={`Fecha del ${nombreDuaInicio}`} tipo="date" max={hoy}
+                           valor={datos.fechaDuaInicio}
+                           alCambiar={(valor) => cambiarDato("fechaDuaInicio", valor)} deshabilitado={cerrado} />
+                {esExportacion && (
+                  <Cmp_Campo id="txtNotificacionDuaAduana" etiqueta="Notificación del DUA de salida a la aduana"
+                             valor={datos.notificacionDuaAduana} maxLength={120} placeholder="Por ejemplo, correo 17-03-2025"
+                             alCambiar={(valor) => cambiarDato("notificacionDuaAduana", valor)} deshabilitado={cerrado} />
+                )}
               </div>
-            </div>
 
-            <div className="d-flex justify-content-end gap-2 mt-3">
-              <button type="button" className="btn btn-outline-secondary" id="btnDeshacerDatos"
-                      onClick={() => setDatos(datosDesdeExpediente(expediente))}>
-                Deshacer cambios
-              </button>
-              <button type="submit" className="btn btn-sim" id="btnGuardarDatos" disabled={guardando}>
-                <i className="bi bi-save me-1" aria-hidden="true"></i>Guardar datos
-              </button>
-            </div>
+              <h2 className="h6 text-muted">{configuracion.seccionCierre}</h2>
+              {esExportacion && (
+                <p className="small text-muted mb-2">
+                  Referencia de reimportación:{" "}
+                  <span className="sim-referencia">{configuracion.prefijoReimportacion}{expediente.referenciaInterna}</span>
+                </p>
+              )}
+              <div className="row g-3">
+                {esExportacion && (
+                  <>
+                    <Cmp_Campo id="txtSolicitudIngreso" etiqueta="Solicitud de reingreso del usuario"
+                               valor={datos.solicitudIngreso} maxLength={120} placeholder="Oficio o correo"
+                               alCambiar={(valor) => cambiarDato("solicitudIngreso", valor)} deshabilitado={cerrado} />
+                    <Cmp_Campo id="dtpFechaReingreso" etiqueta="Fecha de reingreso al país" tipo="date" max={hoy}
+                               valor={datos.fechaReingreso}
+                               alCambiar={(valor) => cambiarDato("fechaReingreso", valor)} deshabilitado={cerrado} />
+                    <Cmp_Campo id="txtDocumentoEmbarque" etiqueta="Número del documento de embarque"
+                               valor={datos.documentoEmbarque} maxLength={80} placeholder="Guía aérea o conocimiento de embarque"
+                               alCambiar={(valor) => cambiarDato("documentoEmbarque", valor)} deshabilitado={cerrado} />
+                  </>
+                )}
+                <Cmp_Campo id="txtNumeroDuaCierre" etiqueta={`Número del ${nombreDuaCierre}`}
+                           valor={datos.numeroDuaCierre} maxLength={80}
+                           alCambiar={(valor) => cambiarDato("numeroDuaCierre", valor)} />
+                <Cmp_Campo id="dtpFechaDuaCierre" etiqueta={`Fecha del ${nombreDuaCierre}`} tipo="date" max={hoy}
+                           valor={datos.fechaDuaCierre} alCambiar={(valor) => cambiarDato("fechaDuaCierre", valor)} />
+                {esExportacion && (
+                  <Cmp_Campo id="dtpFechaDesalmacenaje" etiqueta="Fecha de desalmacenaje" tipo="date" max={hoy}
+                             valor={datos.fechaDesalmacenaje}
+                             alCambiar={(valor) => cambiarDato("fechaDesalmacenaje", valor)} deshabilitado={cerrado} />
+                )}
+                {esExportacion && (
+                  <div className="col-md-6">
+                    <label className="form-label" htmlFor="cmbPagaImpuestosReimportacion">
+                      ¿La reimportación paga impuestos?
+                      <Cmp_SIM_AyudaCampo titulo="los impuestos de la reimportación">
+                        Sí, cuando se pagan impuestos por los trabajos hechos al equipo en el exterior.
+                        No, cuando la reparación fue por garantía y no se pagan.
+                      </Cmp_SIM_AyudaCampo>
+                    </label>
+                    <select className="form-select" id="cmbPagaImpuestosReimportacion" disabled={cerrado}
+                            value={datos.pagaImpuestosReimportacion}
+                            onChange={(evento) => cambiarDato("pagaImpuestosReimportacion", evento.target.value)}>
+                      <option value="">Sin indicar</option>
+                      <option value="SI">Sí, por los trabajos realizados</option>
+                      <option value="NO">No, por garantía</option>
+                    </select>
+                  </div>
+                )}
+                {esExportacion && datos.pagaImpuestosReimportacion === "SI" && (
+                  <div className="col-md-6">
+                    <label className="form-label" htmlFor="numMontoImpuestosReimportacion">
+                      Impuestos pagados en la reimportación (₡)
+                    </label>
+                    <div className="input-group">
+                      <span className="input-group-text" aria-hidden="true">₡</span>
+                      <input type="number" className="form-control" id="numMontoImpuestosReimportacion"
+                             min="0" step="0.01" disabled={cerrado}
+                             value={datos.montoImpuestosReimportacion}
+                             onChange={(evento) => cambiarDato("montoImpuestosReimportacion", evento.target.value)} />
+                    </div>
+                  </div>
+                )}
+                <Cmp_Campo id="txtCancelacionRegimen" etiqueta="Oficio de cancelación del régimen"
+                           valor={datos.cancelacionRegimen} maxLength={120} placeholder="Oficio o correo"
+                           alCambiar={(valor) => cambiarDato("cancelacionRegimen", valor)} deshabilitado={cerrado} />
+                <Cmp_Campo id="dtpFechaCancelacion" etiqueta="Fecha de cancelación del régimen" tipo="date" max={hoy}
+                           valor={datos.fechaCancelacion}
+                           alCambiar={(valor) => cambiarDato("fechaCancelacion", valor)} deshabilitado={cerrado} />
+                <div className="col-12">
+                  <label className="form-label" htmlFor="txtObservaciones">Observaciones</label>
+                  <textarea className="form-control" id="txtObservaciones" rows={2} disabled={cerrado}
+                            maxLength={LONGITUD_MAXIMA_OBSERVACIONES} placeholder="Notas de seguimiento del trámite."
+                            value={datos.observaciones} onChange={(evento) => cambiarDato("observaciones", evento.target.value)} />
+                </div>
+              </div>
+
+              {puedeModificar && (
+                <div className="d-flex justify-content-end gap-2 mt-3">
+                  <button type="button" className="btn btn-outline-secondary" id="btnDeshacerDatos"
+                          onClick={() => setDatos(datosDesdeExpediente(expediente))}>
+                    Deshacer cambios
+                  </button>
+                  <button type="submit" className="btn btn-sim" id="btnGuardarDatos" disabled={guardando}>
+                    <i className="bi bi-save me-1" aria-hidden="true"></i>Guardar datos
+                  </button>
+                </div>
+              )}
+            </fieldset>
           </form>
         </div>
       </div>
@@ -679,7 +698,7 @@ function Frm_SIM_ExpedienteTramiteTemporal({ tipo }) {
                 Esta exportación temporal ya tiene su única prórroga registrada.
               </div>
             )}
-            {!prorrogaExportacionRegistrada && (
+            {!prorrogaExportacionRegistrada && puedeModificar && (
             <form onSubmit={guardarProrroga} noValidate>
               <div className="row g-3">
                 <div className="col-12">
@@ -859,7 +878,7 @@ function Frm_SIM_ExpedienteTramiteTemporal({ tipo }) {
                                     }))}>
                             Descargar
                           </button>
-                          {vigente && !cerrado && (
+                          {vigente && !cerrado && puedeModificar && (
                             <button type="button" className="btn btn-outline-danger"
                                     onClick={() => setDocumentoPorEliminar(documento)}>
                               <i className="bi bi-trash me-1" aria-hidden="true"></i>Eliminar
@@ -874,19 +893,21 @@ function Frm_SIM_ExpedienteTramiteTemporal({ tipo }) {
             </table>
           </div>
 
-          <h2 className="h6 text-muted">Agregar documentación</h2>
-          <form onSubmit={adjuntarDocumentos} noValidate>
-            <Cmp_SIM_Documentos key={versionArchivos} documentos={cerrado ? documentosCierre : documentosExpediente}
-                                archivos={archivos} alCambiar={setArchivos} />
-            <div className="d-flex justify-content-end gap-2 mt-3">
-              <button type="button" className="btn btn-outline-secondary" id="btnLimpiarDocumentos" onClick={limpiarArchivos}>
-                Limpiar
-              </button>
-              <button type="submit" className="btn btn-sim" id="btnAgregarDocumentos" disabled={guardando}>
-                <i className="bi bi-plus-circle me-1" aria-hidden="true"></i>Agregar al expediente
-              </button>
-            </div>
-          </form>
+          {puedeModificar && <h2 className="h6 text-muted">Agregar documentación</h2>}
+          {puedeModificar && (
+            <form onSubmit={adjuntarDocumentos} noValidate>
+              <Cmp_SIM_Documentos key={versionArchivos} documentos={cerrado ? documentosCierre : documentosExpediente}
+                                  archivos={archivos} alCambiar={setArchivos} />
+              <div className="d-flex justify-content-end gap-2 mt-3">
+                <button type="button" className="btn btn-outline-secondary" id="btnLimpiarDocumentos" onClick={limpiarArchivos}>
+                  Limpiar
+                </button>
+                <button type="submit" className="btn btn-sim" id="btnAgregarDocumentos" disabled={guardando}>
+                  <i className="bi bi-plus-circle me-1" aria-hidden="true"></i>Agregar al expediente
+                </button>
+              </div>
+            </form>
+          )}
         </div>
       </div>
 

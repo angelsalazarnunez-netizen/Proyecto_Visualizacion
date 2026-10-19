@@ -2,6 +2,8 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 
 import Cmp_SIM_Marco from "../../componentes/Cmp_SIM_Marco.jsx";
+import { useSesionActual } from "../../componentes/seguridad/Cmp_SIM_ConPermiso.jsx";
+import { CONSULTA_POR_TIPO_TRAMITE } from "../../utilerias/Permisos.js";
 import { obtenerSesion } from "../../servicios/Srv_SIM_Autenticacion.js";
 import { obtenerPanelTramites } from "../../servicios/Srv_SIM_Tramites.js";
 
@@ -18,6 +20,12 @@ import "./Lst_SIM_TramitesActivos.css";
  *
  * Historial de cambios:
  *   05/10/2026 Equipo de Desarrollo SIM: creación de la pantalla.
+ *
+ *   Responsable: Equipo de Desarrollo SIM
+ *   Fecha: 19/10/2026
+ *   Descripción: restricciones por rol (HU-003). El servidor muestra solo los tipos de trámite que la
+ *     persona consulta; con REPORTE_CONSULTAR ve todos, pero solo puede abrir el expediente de los
+ *     tipos de sus módulos (los demás se muestran sin enlace).
  */
 
 const INTERVALO_ACTUALIZACION_MS = 60000;
@@ -133,6 +141,7 @@ function Lst_SIM_TramitesActivos() {
   const [tipo, setTipo] = useState("");
 
   const usuario = obtenerSesion()?.nombreCompleto || "Agente de aduanas";
+  const { tieneAlguno } = useSesionActual();
 
   const cargar = useCallback(async (silencioso) => {
     if (!silencioso) {
@@ -211,6 +220,11 @@ function Lst_SIM_TramitesActivos() {
   ];
 
   function rutaExpediente(tramite) {
+    // Sin permiso para el tipo (por ejemplo, con solo REPORTE_CONSULTAR) la referencia no es enlace.
+    const permisosTipo = CONSULTA_POR_TIPO_TRAMITE[tramite.codigoTipoTramite];
+    if (!permisosTipo || !tieneAlguno(permisosTipo)) {
+      return null;
+    }
     const base = RUTAS_EXPEDIENTE[tramite.codigoTipoTramite];
     return base ? `${base}/${encodeURIComponent(tramite.referenciaInterna)}` : null;
   }

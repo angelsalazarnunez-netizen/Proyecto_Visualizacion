@@ -80,6 +80,17 @@ public final class ConstantesSeguridad {
 
     public static final String EXPRESION_CEDULA = "^[0-9]{9}$";
 
+    // restricciones por rol (HU-003). Responsable: Equipo de Desarrollo SIM. Fecha: 19/10/2026.
+    public static final String MENSAJE_SESION_REQUERIDA =
+            "Debe iniciar sesión para continuar.";
+
+    public static final String MENSAJE_ACCESO_DENEGADO =
+            "No cuenta con autorización para esta operación. "
+                    + "Solicite a la jefatura el rol correspondiente.";
+
+    public static final String MENSAJE_TIPOS_TRAMITE_NO_PERMITIDOS =
+            "No cuenta con autorización para consultar los tipos de trámite seleccionados.";
+
     /**
      * Descripcion: impide la instanciacion de la clase
      * de constantes.

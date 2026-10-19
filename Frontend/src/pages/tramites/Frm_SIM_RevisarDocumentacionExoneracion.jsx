@@ -2,6 +2,11 @@ import { useEffect, useState } from "react";
 import { Link, useLocation, useParams } from "react-router-dom";
 
 import Cmp_SIM_Marco from "../../componentes/Cmp_SIM_Marco.jsx";
+import Cmp_SIM_ConPermiso, {
+  Cmp_SIM_AvisoSoloConsulta,
+  useSesionActual,
+} from "../../componentes/seguridad/Cmp_SIM_ConPermiso.jsx";
+import { PERMISOS } from "../../utilerias/Permisos.js";
 import { Cmp_SIM_AyudaCampo } from "../../componentes/Cmp_SIM_Ayuda.jsx";
 
 import { obtenerSesion } from "../../servicios/Srv_SIM_Autenticacion.js";
@@ -24,6 +29,12 @@ import "./Frm_SIM_RevisarDocumentacionExoneracion.css";
  *
  * Historial de cambios:
  *   05/10/2026 Equipo de Desarrollo SIM: creación de la pantalla.
+ *
+ *   Responsable: Equipo de Desarrollo SIM
+ *   Fecha: 19/10/2026
+ *   Descripción: restricciones por rol (HU-003). Sin EXONERACION_MODIFICAR la revisión es de
+ *     consulta: el estado y la observación de cada documento se muestran deshabilitados, sin el botón
+ *     Guardar; el historial de cada documento sigue disponible.
  */
 
 const USUARIO_ACTUAL = "Técnica de Exoneraciones";
@@ -119,6 +130,8 @@ function claseEstado(estado) {
 }
 
 function Frm_SIM_RevisarDocumentacionExoneracion() {
+    // Restricciones por rol (HU-003): sin el permiso de modificar, la pantalla es de consulta.
+    const puedeModificar = useSesionActual().tieneAlguno([PERMISOS.EXONERACION_MODIFICAR]);
     const { referenciaInterna } = useParams();
     const { state: estadoNavegacion } = useLocation();
 
@@ -452,9 +465,14 @@ function Frm_SIM_RevisarDocumentacionExoneracion() {
             <ol className="breadcrumb small">
 
                 <li className="breadcrumb-item">
-                    <Link to="/tramites/exoneracion">
-                        Exoneraciones
-                    </Link>
+                    <Cmp_SIM_ConPermiso
+                        permisos={[PERMISOS.EXONERACION_CREAR]}
+                        alterno="Exoneraciones"
+                    >
+                        <Link to="/tramites/exoneracion">
+                            Exoneraciones
+                        </Link>
+                    </Cmp_SIM_ConPermiso>
                 </li>
 
                 <li className="breadcrumb-item">
@@ -572,6 +590,13 @@ function Frm_SIM_RevisarDocumentacionExoneracion() {
                 >
                     {alerta.texto}
                 </div>
+            )}
+
+            {!puedeModificar && (
+                <Cmp_SIM_AvisoSoloConsulta
+                    texto={"Usted puede consultar la revisión documental y su historial, pero sus roles "
+                        + "no le permiten registrar revisiones."}
+                />
             )}
 
             <div
@@ -773,6 +798,7 @@ function Frm_SIM_RevisarDocumentacionExoneracion() {
                                                 }
                                                 disabled={
                                                     !documento.idDocumento
+                                                    || !puedeModificar
                                                 }
                                                 onChange={(evento) =>
                                                     cambiarEstado(
@@ -813,6 +839,7 @@ function Frm_SIM_RevisarDocumentacionExoneracion() {
                             }
                             disabled={
                                 !documento.idDocumento
+                                || !puedeModificar
                             }
                             placeholder={
                                 documento.idDocumento
@@ -848,32 +875,34 @@ function Frm_SIM_RevisarDocumentacionExoneracion() {
 
                                             <div className="d-flex flex-wrap gap-2">
 
-                                                <button
-                                                    type="button"
-                                                    className="btn btn-sim btn-sm"
-                                                    disabled={
-                                                        !documento.idDocumento
-                                                        || guardandoId
-                                                        === documento.idDocumento
-                                                    }
-                                                    onClick={() =>
-                                                        guardarRevision(
-                                                            documento
-                                                        )
-                                                    }
-                                                >
-                                                    <i
-                                                        className="bi bi-save me-1"
-                                                        aria-hidden="true"
-                                                    />
+                                                {puedeModificar && (
+                                                  <button
+                                                      type="button"
+                                                      className="btn btn-sim btn-sm"
+                                                      disabled={
+                                                          !documento.idDocumento
+                                                          || guardandoId
+                                                          === documento.idDocumento
+                                                      }
+                                                      onClick={() =>
+                                                          guardarRevision(
+                                                              documento
+                                                          )
+                                                      }
+                                                  >
+                                                      <i
+                                                          className="bi bi-save me-1"
+                                                          aria-hidden="true"
+                                                      />
 
-                                                    {
-                                                        guardandoId
-                                                        === documento.idDocumento
-                                                            ? "Guardando..."
-                                                            : "Guardar"
-                                                    }
-                                                </button>
+                                                      {
+                                                          guardandoId
+                                                          === documento.idDocumento
+                                                              ? "Guardando..."
+                                                              : "Guardar"
+                                                      }
+                                                  </button>
+                                                )}
 
                                                 <button
                                                     type="button"

@@ -139,8 +139,9 @@
     margin-top: 30px;
 }
 
-/* Heurística H3 (EH9-01, 12/10/2026): permisos obligatorios faltantes al guardar. */
-.seccion-permisos.con-error .rejilla-permisos {
+/* Heurística H3 (EH9-01, 12/10/2026): permisos obligatorios faltantes al guardar.
+   19/10/2026: con los permisos agrupados por módulo, el borde rojo rodea a todos los grupos. */
+.seccion-permisos.con-error .grupos-permisos {
     padding: 12px;
     border: 1px solid var(--color-error);
     border-radius: 10px;
@@ -184,6 +185,45 @@
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 12px 16px;
+}
+
+/* Restricciones por rol (HU-003, 19/10/2026): permisos agrupados por módulo de acceso. */
+.grupos-permisos {
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+}
+
+.grupo-permisos-modulo {
+    padding: 14px 16px 16px;
+    border: 1px solid var(--color-borde);
+    border-radius: 10px;
+    background-color: var(--color-fondo-suave);
+}
+
+.encabezado-grupo-permisos {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    width: 100%;
+    margin-bottom: 12px;
+    padding: 0;
+    float: none;
+    font-size: 1rem;
+}
+
+.nombre-grupo-permisos {
+    font-weight: 700;
+    color: var(--color-primario);
+}
+
+.contador-grupo-permisos {
+    padding: 2px 10px;
+    border-radius: 12px;
+    background-color: var(--color-superficie);
+    border: 1px solid var(--color-borde);
+    font-size: 0.8125rem;
+    color: var(--color-texto-secundario);
 }
 
 .opcion-permiso {

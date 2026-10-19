@@ -6,9 +6,14 @@
  *   requieren la sesión: se envía el token de Srv_SIM_Autenticacion y, si el servidor responde
  *   que la sesión no es válida, se limpia y se regresa al inicio de sesión. El registro y la
  *   validación de la cuenta son públicos y no envían token.
+ *
+ * Historial de cambios:
+ *   Responsable: Equipo de Desarrollo SIM
+ *   Fecha: 19/10/2026
+ *   Descripción: ante un 403 se refrescan los permisos de la sesión (restricciones por rol, HU-003).
  */
 
-import { limpiarSesion, obtenerToken } from "./Srv_SIM_Autenticacion.js";
+import { limpiarSesion, notificarAccesoDenegado, obtenerToken } from "./Srv_SIM_Autenticacion.js";
 
 export const RUTA_SEGURIDAD = "/api/v1/seguridad";
 export const RUTA_REGISTRO = "/api/autenticacion/registro";
@@ -34,6 +39,10 @@ export async function solicitarSeguridad(ruta, opciones = {}) {
   if (respuesta.status === 401) {
     limpiarSesion();
     window.location.assign("/login");
+  }
+  if (respuesta.status === 403) {
+    // Puede deberse a que se retiró un rol: se refrescan los permisos para el menú (HU-003).
+    notificarAccesoDenegado();
   }
 
   return respuesta;

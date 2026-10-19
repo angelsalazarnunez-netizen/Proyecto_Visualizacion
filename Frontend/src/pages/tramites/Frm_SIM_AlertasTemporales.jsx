@@ -2,6 +2,8 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 
 import Cmp_SIM_Marco from "../../componentes/Cmp_SIM_Marco.jsx";
+import Cmp_SIM_ConPermiso from "../../componentes/seguridad/Cmp_SIM_ConPermiso.jsx";
+import { PERMISOS } from "../../utilerias/Permisos.js";
 import { formatearFechaLocal } from "../../componentes/Cmp_SIM_CuentaRegresiva.jsx";
 import { obtenerTipoTemporalPorNombre } from "../../componentes/Cmp_SIM_TramitesTemporales.js";
 import { obtenerSesion } from "../../servicios/Srv_SIM_Autenticacion.js";
@@ -25,6 +27,11 @@ import {
  *   Fecha: 04/10/2026
  *   Descripción: la bandeja reúne las alertas de las importaciones y de las exportaciones
  *     temporales (HU-026): cada alerta indica su tipo y lleva al expediente que le corresponde.
+ *
+ *   Responsable: Equipo de Desarrollo SIM
+ *   Fecha: 19/10/2026
+ *   Descripción: restricciones por rol (HU-003): «Marcar atendida» solo se muestra con
+ *     ADUANERO_TEMPORAL_MODIFICAR.
  */
 
 const AYUDA = {
@@ -165,9 +172,11 @@ function Frm_SIM_AlertasTemporales() {
                           Ver expediente
                         </Link>
                         {alerta.estado === "PENDIENTE" && (
-                          <button type="button" className="btn btn-outline-primary" onClick={() => atender(alerta)}>
-                            Marcar atendida
-                          </button>
+                          <Cmp_SIM_ConPermiso permisos={[PERMISOS.ADUANERO_TEMPORAL_MODIFICAR]}>
+                            <button type="button" className="btn btn-outline-primary" onClick={() => atender(alerta)}>
+                              Marcar atendida
+                            </button>
+                          </Cmp_SIM_ConPermiso>
                         )}
                       </div>
                     </td>

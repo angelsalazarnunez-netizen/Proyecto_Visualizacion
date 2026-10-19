@@ -2,6 +2,11 @@ import { useEffect, useState } from "react";
 import { Link, useLocation, useParams } from "react-router-dom";
 
 import Cmp_SIM_Marco from "../../componentes/Cmp_SIM_Marco.jsx";
+import Cmp_SIM_ConPermiso, {
+  Cmp_SIM_AvisoSoloConsulta,
+  useSesionActual,
+} from "../../componentes/seguridad/Cmp_SIM_ConPermiso.jsx";
+import { PERMISOS } from "../../utilerias/Permisos.js";
 import { Cmp_SIM_AyudaCampo } from "../../componentes/Cmp_SIM_Ayuda.jsx";
 import "./Frm_SIM_ObservacionesExoneracion.css";
 import { obtenerSesion } from "../../servicios/Srv_SIM_Autenticacion.js";
@@ -25,6 +30,12 @@ import {
  *
  * Historial de cambios:
  *   05/10/2026 Equipo de Desarrollo SIM: creación de la pantalla.
+ *
+ *   Responsable: Equipo de Desarrollo SIM
+ *   Fecha: 19/10/2026
+ *   Descripción: restricciones por rol (HU-003). Sin EXONERACION_MODIFICAR la pantalla es de
+ *     consulta: se muestra el historial confirmado, pero no el formulario ni las acciones sobre los
+ *     borradores.
  */
 
 const USUARIO_ACTUAL = "Técnica de Exoneraciones";
@@ -113,6 +124,8 @@ function datosDelFormulario(formulario) {
 }
 
 function Frm_SIM_ObservacionesExoneracion() {
+  // Restricciones por rol (HU-003): sin el permiso de modificar, la pantalla es de consulta.
+  const puedeModificar = useSesionActual().tieneAlguno([PERMISOS.EXONERACION_MODIFICAR]);
   const { referenciaInterna } = useParams();
   const { state: estadoNavegacion } = useLocation();
   const idTramiteNavegacion = normalizarIdTramite(estadoNavegacion?.idTramite);
@@ -325,7 +338,7 @@ function Frm_SIM_ObservacionesExoneracion() {
   const migas = (
     <nav aria-label="Ruta de navegación">
       <ol className="breadcrumb small">
-        <li className="breadcrumb-item"><Link to="/tramites/exoneracion">Exoneraciones</Link></li>
+        <li className="breadcrumb-item"><Cmp_SIM_ConPermiso permisos={[PERMISOS.EXONERACION_CREAR]} alterno="Exoneraciones"><Link to="/tramites/exoneracion">Exoneraciones</Link></Cmp_SIM_ConPermiso></li>
         <li className="breadcrumb-item"><Link to={rutaExpediente}>{referenciaInterna}</Link></li>
         <li className="breadcrumb-item active" aria-current="page">Observaciones</li>
       </ol>
@@ -371,112 +384,118 @@ function Frm_SIM_ObservacionesExoneracion() {
       </section>
 
       {alerta && <div className={`alert alert-${alerta.tipo}`} role="alert">{alerta.texto}</div>}
+      {!puedeModificar && (
+        <Cmp_SIM_AvisoSoloConsulta texto={"Usted puede consultar el historial de observaciones, pero sus roles "
+          + "no le permiten registrarlas. Si lo necesita, solicite el rol correspondiente a la jefatura de la Unidad."} />
+      )}
 
       {/* Formulario: registra una observación nueva o edita un borrador propio. */}
-      <div className="card sim-card mb-4" id="frmObservacion">
-        <div className="card-header">
-          {enEdicion
-            ? <><i className="bi bi-pencil-square me-2" aria-hidden="true"></i>Editar borrador</>
-            : <><i className="bi bi-chat-square-text me-2" aria-hidden="true"></i>Registrar observación</>}
-        </div>
-        <div className="card-body">
-          <form onSubmit={enEdicion ? guardarEdicion : guardarBorrador} noValidate>
-            <div className="row g-3">
-              <div className="col-12 col-md-6">
-                <label className="form-label" htmlFor="txtExpediente">Expediente</label>
-                <input type="text" className="form-control sim-referencia" id="txtExpediente"
-                       value={referenciaInterna} readOnly />
-              </div>
-              <div className="col-12 col-md-6">
-                <label className="form-label" htmlFor="txtResponsable">
-                  Responsable
-                  <Cmp_SIM_AyudaCampo titulo="el responsable">
-                    Es la persona con la sesión iniciada. El sistema la registra al guardar; no se
-                    puede cambiar.
-                  </Cmp_SIM_AyudaCampo>
-                </label>
-                <input type="text" className="form-control" id="txtResponsable"
-                       value={responsable} readOnly />
-              </div>
-              <div className="col-12">
-                <label className="form-label" htmlFor="txtMotivo">
-                  Motivo <span className="text-muted small">(opcional)</span>
-                  <Cmp_SIM_AyudaCampo titulo="el motivo">
-                    Resuma en pocas palabras por qué se registra la observación, por ejemplo
-                    &quot;Documento ilegible&quot;. Puede dejarlo en blanco.
-                  </Cmp_SIM_AyudaCampo>
-                </label>
-                <input type="text" id="txtMotivo"
-                       className={`form-control${errores.motivo ? " is-invalid" : ""}`}
-                       maxLength={LONGITUD_MAXIMA_MOTIVO}
-                       value={formulario.motivo}
-                       aria-describedby="hlpMotivo"
-                       onChange={(evento) => actualizarCampo("motivo", evento.target.value)} />
-                {errores.motivo && <div className="invalid-feedback">{errores.motivo}</div>}
-                <div className="form-text text-end" id="hlpMotivo">
-                  {formulario.motivo.length}/{LONGITUD_MAXIMA_MOTIVO}
+      {puedeModificar && (
+        <div className="card sim-card mb-4" id="frmObservacion">
+          <div className="card-header">
+            {enEdicion
+              ? <><i className="bi bi-pencil-square me-2" aria-hidden="true"></i>Editar borrador</>
+              : <><i className="bi bi-chat-square-text me-2" aria-hidden="true"></i>Registrar observación</>}
+          </div>
+          <div className="card-body">
+            <form onSubmit={enEdicion ? guardarEdicion : guardarBorrador} noValidate>
+              <div className="row g-3">
+                <div className="col-12 col-md-6">
+                  <label className="form-label" htmlFor="txtExpediente">Expediente</label>
+                  <input type="text" className="form-control sim-referencia" id="txtExpediente"
+                         value={referenciaInterna} readOnly />
+                </div>
+                <div className="col-12 col-md-6">
+                  <label className="form-label" htmlFor="txtResponsable">
+                    Responsable
+                    <Cmp_SIM_AyudaCampo titulo="el responsable">
+                      Es la persona con la sesión iniciada. El sistema la registra al guardar; no se
+                      puede cambiar.
+                    </Cmp_SIM_AyudaCampo>
+                  </label>
+                  <input type="text" className="form-control" id="txtResponsable"
+                         value={responsable} readOnly />
+                </div>
+                <div className="col-12">
+                  <label className="form-label" htmlFor="txtMotivo">
+                    Motivo <span className="text-muted small">(opcional)</span>
+                    <Cmp_SIM_AyudaCampo titulo="el motivo">
+                      Resuma en pocas palabras por qué se registra la observación, por ejemplo
+                      &quot;Documento ilegible&quot;. Puede dejarlo en blanco.
+                    </Cmp_SIM_AyudaCampo>
+                  </label>
+                  <input type="text" id="txtMotivo"
+                         className={`form-control${errores.motivo ? " is-invalid" : ""}`}
+                         maxLength={LONGITUD_MAXIMA_MOTIVO}
+                         value={formulario.motivo}
+                         aria-describedby="hlpMotivo"
+                         onChange={(evento) => actualizarCampo("motivo", evento.target.value)} />
+                  {errores.motivo && <div className="invalid-feedback">{errores.motivo}</div>}
+                  <div className="form-text text-end" id="hlpMotivo">
+                    {formulario.motivo.length}/{LONGITUD_MAXIMA_MOTIVO}
+                  </div>
+                </div>
+                <div className="col-12">
+                  <label className="form-label" htmlFor="txtObservacion">
+                    Observación <span className="text-danger" aria-hidden="true">*</span>
+                    <span className="visually-hidden">(obligatoria)</span>
+                  </label>
+                  <textarea id="txtObservacion" rows={4}
+                            className={`form-control${errores.observacion ? " is-invalid" : ""}`}
+                            maxLength={LONGITUD_MAXIMA_OBSERVACION}
+                            placeholder="Describa el hallazgo y la aclaración solicitada a la unidad"
+                            value={formulario.observacion}
+                            aria-describedby="hlpObservacion"
+                            aria-required="true"
+                            onChange={(evento) => actualizarCampo("observacion", evento.target.value)} />
+                  {errores.observacion && <div className="invalid-feedback">{errores.observacion}</div>}
+                  <div className="form-text text-end" id="hlpObservacion">
+                    {formulario.observacion.length}/{LONGITUD_MAXIMA_OBSERVACION}
+                  </div>
                 </div>
               </div>
-              <div className="col-12">
-                <label className="form-label" htmlFor="txtObservacion">
-                  Observación <span className="text-danger" aria-hidden="true">*</span>
-                  <span className="visually-hidden">(obligatoria)</span>
-                </label>
-                <textarea id="txtObservacion" rows={4}
-                          className={`form-control${errores.observacion ? " is-invalid" : ""}`}
-                          maxLength={LONGITUD_MAXIMA_OBSERVACION}
-                          placeholder="Describa el hallazgo y la aclaración solicitada a la unidad"
-                          value={formulario.observacion}
-                          aria-describedby="hlpObservacion"
-                          aria-required="true"
-                          onChange={(evento) => actualizarCampo("observacion", evento.target.value)} />
-                {errores.observacion && <div className="invalid-feedback">{errores.observacion}</div>}
-                <div className="form-text text-end" id="hlpObservacion">
-                  {formulario.observacion.length}/{LONGITUD_MAXIMA_OBSERVACION}
-                </div>
+
+              <p className="form-text mb-0 mt-2">
+                {enEdicion
+                  ? "Está editando un borrador. Al guardar los cambios sigue siendo borrador; "
+                    + "para confirmarlo use el botón Confirmar de la lista de borradores."
+                  : "Un borrador solo lo ve usted. Al confirmar, la observación pasa al historial con su "
+                    + "nombre, la fecha y la hora, y ya no puede modificarse ni eliminarse."}
+              </p>
+
+              <div className="d-flex flex-wrap justify-content-end gap-2 mt-3">
+                {enEdicion ? (
+                  <>
+                    <button type="button" className="btn btn-outline-secondary" id="btnCancelarEdicion"
+                            onClick={limpiarFormulario} disabled={procesando}>
+                      Cancelar edición
+                    </button>
+                    <button type="submit" className="btn btn-sim" id="btnGuardarEdicion"
+                            disabled={procesando || !borradorEnEdicion}>
+                      <i className="bi bi-save me-1" aria-hidden="true"></i>Guardar cambios
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    <button type="button" className="btn btn-outline-secondary" id="btnLimpiarObservacion"
+                            onClick={limpiarFormulario} disabled={procesando}>
+                      Limpiar
+                    </button>
+                    <button type="submit" className="btn btn-outline-secondary" id="btnGuardarBorrador"
+                            disabled={procesando}>
+                      <i className="bi bi-file-earmark me-1" aria-hidden="true"></i>Guardar borrador
+                    </button>
+                    <button type="button" className="btn btn-sim" id="btnConfirmarObservacion"
+                            onClick={solicitarConfirmacionNueva} disabled={procesando}>
+                      <i className="bi bi-check2-circle me-1" aria-hidden="true"></i>Confirmar observación
+                    </button>
+                  </>
+                )}
               </div>
-            </div>
-
-            <p className="form-text mb-0 mt-2">
-              {enEdicion
-                ? "Está editando un borrador. Al guardar los cambios sigue siendo borrador; "
-                  + "para confirmarlo use el botón Confirmar de la lista de borradores."
-                : "Un borrador solo lo ve usted. Al confirmar, la observación pasa al historial con su "
-                  + "nombre, la fecha y la hora, y ya no puede modificarse ni eliminarse."}
-            </p>
-
-            <div className="d-flex flex-wrap justify-content-end gap-2 mt-3">
-              {enEdicion ? (
-                <>
-                  <button type="button" className="btn btn-outline-secondary" id="btnCancelarEdicion"
-                          onClick={limpiarFormulario} disabled={procesando}>
-                    Cancelar edición
-                  </button>
-                  <button type="submit" className="btn btn-sim" id="btnGuardarEdicion"
-                          disabled={procesando || !borradorEnEdicion}>
-                    <i className="bi bi-save me-1" aria-hidden="true"></i>Guardar cambios
-                  </button>
-                </>
-              ) : (
-                <>
-                  <button type="button" className="btn btn-outline-secondary" id="btnLimpiarObservacion"
-                          onClick={limpiarFormulario} disabled={procesando}>
-                    Limpiar
-                  </button>
-                  <button type="submit" className="btn btn-outline-secondary" id="btnGuardarBorrador"
-                          disabled={procesando}>
-                    <i className="bi bi-file-earmark me-1" aria-hidden="true"></i>Guardar borrador
-                  </button>
-                  <button type="button" className="btn btn-sim" id="btnConfirmarObservacion"
-                          onClick={solicitarConfirmacionNueva} disabled={procesando}>
-                    <i className="bi bi-check2-circle me-1" aria-hidden="true"></i>Confirmar observación
-                  </button>
-                </>
-              )}
-            </div>
-          </form>
+            </form>
+          </div>
         </div>
-      </div>
+      )}
 
       {/* Borradores propios: solo los del usuario autenticado, editables. */}
       <div className="card sim-card mb-4 sim-observaciones-borradores" id="seccionBorradores">
@@ -513,7 +532,7 @@ function Frm_SIM_ObservacionesExoneracion() {
                             && ` · modificado ${formatearFechaHora(borrador.fechaModificacion)}`}
                         </small>
                       </div>
-                      {editable && (
+                      {editable && puedeModificar && (
                         <div className="btn-group btn-group-sm" role="group"
                              aria-label="Acciones del borrador">
                           <button type="button" className="btn btn-outline-secondary"

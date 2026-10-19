@@ -10,6 +10,13 @@
 --
 -- Requisito previo: ejecutar 02-Tablas-Tramites.sql y 04-Tabla-Sesion-HU004.sql. Si existe el
 -- rol ADMINISTRADOR de pruebas (09-Usuario-Pruebas-Administrador.sql), recibe estos permisos.
+--
+-- Historial de cambios:
+--   Responsable: Equipo de Desarrollo SIM
+--   Fecha: 19/10/2026
+--   Descripción: se retira APROBACION_EXONERACION, duplicado de EXONERACION_APROBAR (script 10).
+--     Si se dejaba aquí, cada ejecución lo reactivaba. El script 16 lo inactiva en las bases que
+--     ya lo tenían y asigna el módulo de cada permiso.
 
 SET NAMES utf8mb4;
 
@@ -77,8 +84,6 @@ VALUES
         'Permite generar representaciones graficas de la informacion.', 'ACT'),
     ('APROBACION_FONDOS', 'Aprobar fondos',
         'Permite realizar aprobaciones relacionadas con fondos.', 'ACT'),
-    ('APROBACION_EXONERACION', 'Aprobar exoneraciones',
-        'Permite realizar aprobaciones relacionadas con exoneraciones.', 'ACT'),
     ('BITACORA_CONSULTAR', 'Consultar bitacora',
         'Permite consultar la bitacora de operaciones del sistema.', 'ACT')
 ON DUPLICATE KEY UPDATE ESTADO = 'ACT';

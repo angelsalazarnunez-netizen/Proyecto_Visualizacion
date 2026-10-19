@@ -31,6 +31,7 @@ import Frm_SIM_RegistrarUsuario from "./pages/seguridad/Frm_SIM_RegistrarUsuario
 import Frm_SIM_VerificarCuenta from "./pages/seguridad/Frm_SIM_VerificarCuenta.jsx";
 import Frm_SIM_GestionarRoles from "./pages/seguridad/Frm_SIM_GestionarRoles.jsx";
 import Frm_SIM_AsignarRoles from "./pages/seguridad/Frm_SIM_AsignarRoles.jsx";
+import { ACCESOS, PERMISOS } from "./utilerias/Permisos.js";
 
 /**
  * Autor: Katherine Susana Valverde Fallas
@@ -94,6 +95,13 @@ import Frm_SIM_AsignarRoles from "./pages/seguridad/Frm_SIM_AsignarRoles.jsx";
  *   Fecha: 12/10/2026
  *   Descripción: se agregan las rutas públicas del registro y la validación de cuentas (HU-001) y
  *     las rutas protegidas de la gestión y la asignación de roles (HU-003).
+ *
+ *   Responsable: Equipo de Desarrollo SIM
+ *   Fecha: 19/10/2026
+ *   Descripción: restricciones por rol (HU-003). Las rutas protegidas se agrupan por el permiso que
+ *     exigen (Cmp_SIM_RutaProtegida con la propiedad permisos), con los mismos permisos que valida
+ *     el servidor y que usa el menú (utilerias/OpcionesSistema.js). Sin el permiso, la ruta lleva
+ *     al menú con un aviso. Una pantalla nueva se agrega dentro del grupo de su permiso.
  */
 function App() {
   return (
@@ -104,51 +112,101 @@ function App() {
       <Route path="/verificar" element={<Frm_SIM_VerificarCuenta />} />
       <Route element={<Cmp_SIM_RutaProtegida />}>
         <Route path="/menu" element={<Frm_SIM_Menu />} />
-        <Route path="/tramites/desalmacenaje" element={<Frm_SIM_RegistrarDesalmacenaje />} />
-        <Route path="/tramites/expedientes" element={<Lst_SIM_Expedientes />} />
-        <Route path="/tramites/expedientes/:referenciaInterna" element={<Frm_SIM_Expediente />} />
-        <Route path="/tramites/expedientes/:referenciaInterna/documentacion"
-               element={<Frm_SIM_DocumentacionDesalmacenaje />} />
-        <Route path="/tramites/exoneracion" element={<Frm_SIM_RegistrarExoneracion />} />
-        <Route path="/tramites/exoneraciones/:referenciaInterna"
-               element={<Frm_SIM_ExpedienteExoneracion />} />
-        <Route path="/tramites/exoneraciones/:referenciaInterna/observaciones"
-               element={<Frm_SIM_ObservacionesExoneracion />} />
-        <Route path="/tramites/exoneraciones/:referenciaInterna/revision-documental"
-              element={<Frm_SIM_RevisarDocumentacionExoneracion />}/>
-        <Route path="/tramites/exoneraciones/:referenciaInterna/control-documental"
-               element={<Frm_SIM_ControlDocumentalExoneracion />} />
-        <Route path="/tramites/exoneraciones/aprobaciones" element={<Lst_SIM_AprobacionesExoneracion />} />
-        <Route path="/tramites/exoneraciones/:referenciaInterna/aprobacion"
-               element={<Frm_SIM_AprobarExoneracion />} />
-        <Route path="/tramites/exoneraciones/:referenciaInterna/autorizacion-exonet"
-               element={<Frm_SIM_AutorizacionExonet />} />
-        <Route path="/tramites/importacion" element={<Frm_SIM_RegistrarImportacion />} />
-        <Route path="/tramites/importaciones" element={<Lst_SIM_Importaciones />} />
-        <Route path="/tramites/importaciones/nueva" element={<Frm_SIM_RegistrarImportacion />} />
-        <Route path="/tramites/importaciones/:referenciaInterna" element={<Frm_SIM_RegistrarImportacion />} />
-        <Route path="/tramites/donaciones" element={<Lst_SIM_Donaciones />} />
-        <Route path="/tramites/donaciones/nueva" element={<Frm_SIM_RegistrarDonacion />} />
-        <Route path="/tramites/donaciones/:referenciaInterna" element={<Frm_SIM_ExpedienteDonacion />} />
-        <Route path="/tramites/temporales" element={<Navigate to="/tramites/importaciones-temporales" replace />} />
-        <Route path="/tramites/temporales/alertas" element={<Frm_SIM_AlertasTemporales />} />
-        <Route path="/tramites/importaciones-temporales"
-               element={<Lst_SIM_TramitesTemporales key="importacion" tipo="importacion" />} />
-        <Route path="/tramites/importaciones-temporales/nueva"
-               element={<Frm_SIM_RegistrarTramiteTemporal key="importacion" tipo="importacion" />} />
-        <Route path="/tramites/importaciones-temporales/:referenciaInterna"
-               element={<Frm_SIM_ExpedienteTramiteTemporal key="importacion" tipo="importacion" />} />
-        <Route path="/tramites/exportaciones-temporales"
-               element={<Lst_SIM_TramitesTemporales key="exportacion" tipo="exportacion" />} />
-        <Route path="/tramites/exportaciones-temporales/nueva"
-               element={<Frm_SIM_RegistrarTramiteTemporal key="exportacion" tipo="exportacion" />} />
-        <Route path="/tramites/exportaciones-temporales/:referenciaInterna"
-               element={<Frm_SIM_ExpedienteTramiteTemporal key="exportacion" tipo="exportacion" />} />
-        <Route path="/tramites/busqueda" element={<Lst_SIM_BuscarTramites />} />
-        <Route path="/tramites/activos" element={<Lst_SIM_TramitesActivos />} />
-        <Route path="/reportes/consultas-internas" element={<Frm_SIM_ReporteConsultas />} />
-        <Route path="/roles" element={<Frm_SIM_GestionarRoles />} />
-        <Route path="/asignar-roles" element={<Frm_SIM_AsignarRoles />} />
+
+        {/* Vista general: el servidor filtra los trámites a los tipos que la persona consulta. */}
+        <Route element={<Cmp_SIM_RutaProtegida permisos={ACCESOS.CONSULTA_TRAMITES} />}>
+          <Route path="/tramites/busqueda" element={<Lst_SIM_BuscarTramites />} />
+          <Route path="/tramites/activos" element={<Lst_SIM_TramitesActivos />} />
+        </Route>
+
+        {/* Gestión de desalmacenajes especiales. */}
+        <Route element={<Cmp_SIM_RutaProtegida permisos={[PERMISOS.DESALMACENAJE_CREAR]} />}>
+          <Route path="/tramites/desalmacenaje" element={<Frm_SIM_RegistrarDesalmacenaje />} />
+        </Route>
+        <Route element={<Cmp_SIM_RutaProtegida permisos={[PERMISOS.DESALMACENAJE_CONSULTAR]} />}>
+          <Route path="/tramites/expedientes" element={<Lst_SIM_Expedientes />} />
+          <Route path="/tramites/expedientes/:referenciaInterna" element={<Frm_SIM_Expediente />} />
+          <Route path="/tramites/expedientes/:referenciaInterna/documentacion"
+                 element={<Frm_SIM_DocumentacionDesalmacenaje />} />
+        </Route>
+
+        {/* Gestión de exoneraciones. */}
+        <Route element={<Cmp_SIM_RutaProtegida permisos={[PERMISOS.EXONERACION_CREAR]} />}>
+          <Route path="/tramites/exoneracion" element={<Frm_SIM_RegistrarExoneracion />} />
+        </Route>
+        <Route element={<Cmp_SIM_RutaProtegida permisos={[PERMISOS.EXONERACION_CONSULTAR]} />}>
+          <Route path="/tramites/exoneraciones/:referenciaInterna/observaciones"
+                 element={<Frm_SIM_ObservacionesExoneracion />} />
+          <Route path="/tramites/exoneraciones/:referenciaInterna/revision-documental"
+                 element={<Frm_SIM_RevisarDocumentacionExoneracion />} />
+          <Route path="/tramites/exoneraciones/:referenciaInterna/autorizacion-exonet"
+                 element={<Frm_SIM_AutorizacionExonet />} />
+        </Route>
+        <Route element={<Cmp_SIM_RutaProtegida permisos={ACCESOS.EXONERACION_CONSULTA_O_APROBACION} />}>
+          <Route path="/tramites/exoneraciones/:referenciaInterna"
+                 element={<Frm_SIM_ExpedienteExoneracion />} />
+          <Route path="/tramites/exoneraciones/:referenciaInterna/control-documental"
+                 element={<Frm_SIM_ControlDocumentalExoneracion />} />
+          <Route path="/tramites/exoneraciones/:referenciaInterna/aprobacion"
+                 element={<Frm_SIM_AprobarExoneracion />} />
+        </Route>
+
+        {/* Aprobaciones. */}
+        <Route element={<Cmp_SIM_RutaProtegida permisos={[PERMISOS.EXONERACION_APROBAR]} />}>
+          <Route path="/tramites/exoneraciones/aprobaciones" element={<Lst_SIM_AprobacionesExoneracion />} />
+        </Route>
+
+        {/* Gestión de importaciones (pedidos de importación). */}
+        <Route element={<Cmp_SIM_RutaProtegida permisos={[PERMISOS.IMPORTACION_CREAR]} />}>
+          <Route path="/tramites/importacion" element={<Frm_SIM_RegistrarImportacion />} />
+          <Route path="/tramites/importaciones/nueva" element={<Frm_SIM_RegistrarImportacion />} />
+        </Route>
+        <Route element={<Cmp_SIM_RutaProtegida permisos={[PERMISOS.IMPORTACION_CONSULTAR]} />}>
+          <Route path="/tramites/importaciones" element={<Lst_SIM_Importaciones />} />
+          <Route path="/tramites/importaciones/:referenciaInterna" element={<Frm_SIM_RegistrarImportacion />} />
+        </Route>
+
+        {/* Gestión de donaciones. */}
+        <Route element={<Cmp_SIM_RutaProtegida permisos={[PERMISOS.DONACION_CREAR]} />}>
+          <Route path="/tramites/donaciones/nueva" element={<Frm_SIM_RegistrarDonacion />} />
+        </Route>
+        <Route element={<Cmp_SIM_RutaProtegida permisos={[PERMISOS.DONACION_CONSULTAR]} />}>
+          <Route path="/tramites/donaciones" element={<Lst_SIM_Donaciones />} />
+          <Route path="/tramites/donaciones/:referenciaInterna" element={<Frm_SIM_ExpedienteDonacion />} />
+        </Route>
+
+        {/* Gestión aduanera (importaciones y exportaciones temporales). */}
+        <Route element={<Cmp_SIM_RutaProtegida permisos={[PERMISOS.ADUANERO_TEMPORAL_CREAR]} />}>
+          <Route path="/tramites/importaciones-temporales/nueva"
+                 element={<Frm_SIM_RegistrarTramiteTemporal key="importacion" tipo="importacion" />} />
+          <Route path="/tramites/exportaciones-temporales/nueva"
+                 element={<Frm_SIM_RegistrarTramiteTemporal key="exportacion" tipo="exportacion" />} />
+        </Route>
+        <Route element={<Cmp_SIM_RutaProtegida permisos={[PERMISOS.ADUANERO_TEMPORAL_CONSULTAR]} />}>
+          <Route path="/tramites/temporales" element={<Navigate to="/tramites/importaciones-temporales" replace />} />
+          <Route path="/tramites/temporales/alertas" element={<Frm_SIM_AlertasTemporales />} />
+          <Route path="/tramites/importaciones-temporales"
+                 element={<Lst_SIM_TramitesTemporales key="importacion" tipo="importacion" />} />
+          <Route path="/tramites/importaciones-temporales/:referenciaInterna"
+                 element={<Frm_SIM_ExpedienteTramiteTemporal key="importacion" tipo="importacion" />} />
+          <Route path="/tramites/exportaciones-temporales"
+                 element={<Lst_SIM_TramitesTemporales key="exportacion" tipo="exportacion" />} />
+          <Route path="/tramites/exportaciones-temporales/:referenciaInterna"
+                 element={<Frm_SIM_ExpedienteTramiteTemporal key="exportacion" tipo="exportacion" />} />
+        </Route>
+
+        {/* Reportes y consultas. */}
+        <Route element={<Cmp_SIM_RutaProtegida permisos={[PERMISOS.REPORTE_CONSULTAR]} />}>
+          <Route path="/reportes/consultas-internas" element={<Frm_SIM_ReporteConsultas />} />
+        </Route>
+
+        {/* Administración de usuarios. */}
+        <Route element={<Cmp_SIM_RutaProtegida permisos={ACCESOS.GESTION_ROLES} />}>
+          <Route path="/roles" element={<Frm_SIM_GestionarRoles />} />
+        </Route>
+        <Route element={<Cmp_SIM_RutaProtegida permisos={[PERMISOS.ROL_ASIGNAR]} />}>
+          <Route path="/asignar-roles" element={<Frm_SIM_AsignarRoles />} />
+        </Route>
       </Route>
       <Route path="*" element={<Navigate to="/login" replace />} />
     </Routes>

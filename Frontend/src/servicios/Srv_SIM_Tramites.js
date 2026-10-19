@@ -39,10 +39,15 @@
  *   Descripción: se agrega el panel de trámites activos (HU-030).
  *   Descripción: se agregan las solicitudes / autorizaciones EXONET del expediente de exoneración
  *     (HU-023). El usuario lo toma el servidor de la sesión: estas llamadas nunca lo envían.
+ *   Responsable: Equipo de Desarrollo SIM
+ *   Fecha: 19/10/2026
+ *   Descripción: ante un 403 se refrescan los permisos de la sesión, por si se retiró un rol
+ *     (restricciones por rol, HU-003). El mensaje del servidor se sigue mostrando en la pantalla.
  */
 
 import {
   limpiarSesion,
+  notificarAccesoDenegado,
   obtenerSesion,
   obtenerToken,
 } from "./Srv_SIM_Autenticacion.js";
@@ -100,6 +105,9 @@ async function pedir(ruta, opciones) {
   if (respuesta.status === 401) {
     redirigirAlLogin();
   }
+  if (respuesta.status === 403) {
+    notificarAccesoDenegado();
+  }
   if (!respuesta.ok) {
     throw new Error(await leerMensajeError(respuesta));
   }
@@ -112,6 +120,9 @@ async function descargar(ruta, nombreArchivo) {
   });
   if (respuesta.status === 401) {
     redirigirAlLogin();
+  }
+  if (respuesta.status === 403) {
+    notificarAccesoDenegado();
   }
   if (!respuesta.ok) {
     throw new Error(await leerMensajeError(respuesta));
@@ -502,6 +513,9 @@ export async function exportarTramites(criterios, formato) {
   const respuesta = await fetch(ruta, { headers: crearCabecerasAutenticadas() });
   if (respuesta.status === 401) {
     redirigirAlLogin();
+  }
+  if (respuesta.status === 403) {
+    notificarAccesoDenegado();
   }
   if (!respuesta.ok) {
     throw new Error(await leerMensajeError(respuesta));

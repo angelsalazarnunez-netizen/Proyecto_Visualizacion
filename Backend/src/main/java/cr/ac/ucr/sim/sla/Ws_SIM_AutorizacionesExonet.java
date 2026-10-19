@@ -1,5 +1,7 @@
 package cr.ac.ucr.sim.sla;
 
+import cr.ac.ucr.sim.seguridad.ReglasAcceso;
+import org.springframework.security.access.prepost.PreAuthorize;
 import cr.ac.ucr.sim.entidadnegocio.tramites.EntDocumento;
 import cr.ac.ucr.sim.entidadnegocio.tramites.EntExoneracion;
 import cr.ac.ucr.sim.entidadnegocio.tramites.exoneraciones.EntAutorizacionExonet;
@@ -48,6 +50,8 @@ import java.util.Map;
  *
  * Historial de cambios:
  *   05/10/2026 Equipo de Desarrollo SIM: creación de la clase.
+ *   19/10/2026 Equipo de Desarrollo SIM: restricciones por rol (HU-003). Consultar exige
+ *     EXONERACION_CONSULTAR y registrar, completar, anular o sustituir exige EXONERACION_MODIFICAR.
  */
 @RestController
 @RequestMapping("/api/v1/exoneraciones")
@@ -69,6 +73,7 @@ public class Ws_SIM_AutorizacionesExonet {
      * @param pvo_Usuario usuario autenticado (la consulta no lo usa, pero exige sesión)
      * @return historial de autorizaciones del expediente
      */
+    @PreAuthorize(ReglasAcceso.EXONERACION_CONSULTAR)
     @GetMapping("/{vln_IdTramite}/autorizaciones")
     public ResponseEntity<ModeloHistorialAutorizacionesRespuesta> SIMT_AUTORIZACION_EXONET_ObtenerLista(
             @PathVariable("vln_IdTramite") Integer pvn_IdTramite,
@@ -87,6 +92,7 @@ public class Ws_SIM_AutorizacionesExonet {
      * @param pvo_Usuario usuario autenticado, que queda como responsable del registro
      * @return historial actualizado
      */
+    @PreAuthorize(ReglasAcceso.EXONERACION_MODIFICAR)
     @PostMapping(path = "/{vln_IdTramite}/autorizaciones", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<ModeloHistorialAutorizacionesRespuesta> SIMT_AUTORIZACION_EXONET_InsertarRegistro(
             @PathVariable("vln_IdTramite") Integer pvn_IdTramite,
@@ -119,6 +125,7 @@ public class Ws_SIM_AutorizacionesExonet {
      * @param pvo_Usuario usuario autenticado
      * @return historial actualizado
      */
+    @PreAuthorize(ReglasAcceso.EXONERACION_MODIFICAR)
     @PostMapping(path = "/{vln_IdTramite}/autorizaciones/{vln_IdAutorizacion}/completar",
             consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<ModeloHistorialAutorizacionesRespuesta> SIMT_AUTORIZACION_EXONET_CompletarRegistro(
@@ -152,6 +159,7 @@ public class Ws_SIM_AutorizacionesExonet {
      * @param pvo_Usuario usuario autenticado
      * @return historial actualizado
      */
+    @PreAuthorize(ReglasAcceso.EXONERACION_MODIFICAR)
     @PostMapping(path = "/{vln_IdTramite}/autorizaciones/{vln_IdAutorizacion}/anulacion",
             consumes = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<ModeloHistorialAutorizacionesRespuesta> SIMT_AUTORIZACION_EXONET_AnularRegistro(
@@ -179,6 +187,7 @@ public class Ws_SIM_AutorizacionesExonet {
      * @param pvo_Usuario usuario autenticado
      * @return historial actualizado
      */
+    @PreAuthorize(ReglasAcceso.EXONERACION_MODIFICAR)
     @PostMapping(path = "/{vln_IdTramite}/autorizaciones/{vln_IdAutorizacion}/sustitucion",
             consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<ModeloHistorialAutorizacionesRespuesta> SIMT_AUTORIZACION_EXONET_SustituirRegistro(

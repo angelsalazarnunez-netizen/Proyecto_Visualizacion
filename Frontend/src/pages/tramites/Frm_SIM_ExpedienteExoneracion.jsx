@@ -5,7 +5,11 @@ import Cmp_SIM_CambioReferencia from "../../componentes/Cmp_SIM_CambioReferencia
 import Cmp_SIM_CostosTramite from "../../componentes/Cmp_SIM_CostosTramite.jsx";
 import Cmp_SIM_ImprimirBitacora from "../../componentes/Cmp_SIM_ImprimirBitacora.jsx";
 import Cmp_SIM_Marco from "../../componentes/Cmp_SIM_Marco.jsx";
-import { tienePermiso } from "../../servicios/Srv_SIM_Autenticacion.js";
+import Cmp_SIM_ConPermiso, {
+  Cmp_SIM_AvisoSoloConsulta,
+  useSesionActual,
+} from "../../componentes/seguridad/Cmp_SIM_ConPermiso.jsx";
+import { PERMISOS } from "../../utilerias/Permisos.js";
 import { Cmp_SIM_AyudaCampo } from "../../componentes/Cmp_SIM_Ayuda.jsx";
 import Cmp_SIM_Documentos, { contarArchivos } from "../../componentes/Cmp_SIM_Documentos.jsx";
 import { PLANTILLAS, alEscribirConMascara } from "../../componentes/Cmp_SIM_Mascaras.js";
@@ -51,6 +55,13 @@ import {
  *     SICOP, la autorización EXONET, el DUA de aplicación, el comprobante de impuestos y otros
  *     documentos (se pueden adjuntar también después de la aprobación). Los costos muestran solo
  *     los impuestos exonerados: bodegaje, partida e impuestos pagados no son de la exoneración.
+ *
+ *   Responsable: Equipo de Desarrollo SIM
+ *   Fecha: 19/10/2026
+ *   Descripción: restricciones por rol (HU-003). Sin EXONERACION_MODIFICAR el expediente es de
+ *     consulta: los datos y los impuestos se muestran sin poder cambiarlos, y no se ofrecen el cambio
+ *     de referencia, agregar o eliminar documentos ni los comentarios. Quien solo aprueba no ve los
+ *     accesos a observaciones, revisión documental y autorización EXONET.
  */
 
 const USUARIO_ACTUAL = "Técnica de Exoneraciones";
@@ -154,6 +165,12 @@ function formatearFechaHora(valor) {
 }
 
 function Frm_SIM_ExpedienteExoneracion() {
+  // Restricciones por rol (HU-003): sin el permiso de modificar, la pantalla es de consulta.
+  const { tieneAlguno } = useSesionActual();
+  const puedeModificar = tieneAlguno([PERMISOS.EXONERACION_MODIFICAR]);
+  // Quien solo aprueba ve el expediente, pero no las pantallas de gestión de la exoneración.
+  const puedeConsultar = tieneAlguno([PERMISOS.EXONERACION_CONSULTAR]);
+  const puedeAprobar = tieneAlguno([PERMISOS.EXONERACION_APROBAR]);
   const { referenciaInterna } = useParams();
   const [expediente, setExpediente] = useState(null);
   const [datos, setDatos] = useState(null);
@@ -313,9 +330,11 @@ function Frm_SIM_ExpedienteExoneracion() {
         {alerta
           ? <div className={`alert alert-${alerta.tipo}`} role="alert">{alerta.texto}</div>
           : <p className="text-muted">Cargando el expediente...</p>}
-        <Link className="btn btn-outline-secondary" to="/tramites/exoneracion">
-          Registrar una solicitud
-        </Link>
+        <Cmp_SIM_ConPermiso permisos={[PERMISOS.EXONERACION_CREAR]}>
+          <Link className="btn btn-outline-secondary" to="/tramites/exoneracion">
+            Registrar una solicitud
+          </Link>
+        </Cmp_SIM_ConPermiso>
       </Cmp_SIM_Marco>
     );
   }
@@ -332,7 +351,7 @@ function Frm_SIM_ExpedienteExoneracion() {
     <Cmp_SIM_Marco usuario={USUARIO_ACTUAL} ayuda={AYUDA}>
       <nav aria-label="Ruta de navegación">
         <ol className="breadcrumb small">
-          <li className="breadcrumb-item"><Link to="/tramites/exoneracion">Exoneraciones</Link></li>
+          <li className="breadcrumb-item"><Cmp_SIM_ConPermiso permisos={[PERMISOS.EXONERACION_CREAR]} alterno="Exoneraciones"><Link to="/tramites/exoneracion">Exoneraciones</Link></Cmp_SIM_ConPermiso></li>
           <li className="breadcrumb-item active" aria-current="page">{expediente.referenciaInterna}</li>
         </ol>
       </nav>
@@ -343,42 +362,51 @@ function Frm_SIM_ExpedienteExoneracion() {
             Expediente <span className="sim-referencia">{expediente.referenciaInterna}</span>
           </h1>
           <div className="d-flex align-items-center gap-2">
-            <Link className="btn btn-sm btn-outline-secondary" id="btnObservaciones"
-                  to={`/tramites/exoneraciones/${encodeURIComponent(expediente.referenciaInterna)}/observaciones`}
-                  state={{ idTramite: expediente.idTramite, estado: expediente.estado }}>
-              <i className="bi bi-chat-square-text me-1" aria-hidden="true"></i>Observaciones
-            </Link>
-            <Link className="btn btn-sm btn-outline-secondary" id="btnRevisionDocumental"
-                  to={`/tramites/exoneraciones/`+ `${encodeURIComponent(expediente.referenciaInterna)}`+ "/revision-documental"}
-                  state={{ idTramite: expediente.idTramite, estado: expediente.estado }}>
-                  <i className="bi bi-file-earmark-check me-1" aria-hidden="true" /> Revisar documentos
+            {puedeConsultar && (
+              <Link className="btn btn-sm btn-outline-secondary" id="btnObservaciones"
+                    to={`/tramites/exoneraciones/${encodeURIComponent(expediente.referenciaInterna)}/observaciones`}
+                    state={{ idTramite: expediente.idTramite, estado: expediente.estado }}>
+                <i className="bi bi-chat-square-text me-1" aria-hidden="true"></i>Observaciones
               </Link>
+            )}
+            {puedeConsultar && (
+              <Link className="btn btn-sm btn-outline-secondary" id="btnRevisionDocumental"
+                    to={`/tramites/exoneraciones/`+ `${encodeURIComponent(expediente.referenciaInterna)}`+ "/revision-documental"}
+                    state={{ idTramite: expediente.idTramite, estado: expediente.estado }}>
+                    <i className="bi bi-file-earmark-check me-1" aria-hidden="true" /> Revisar documentos
+                </Link>
+            )}
             <Link className="btn btn-sm btn-outline-secondary" id="btnControlDocumental"
                   to={`/tramites/exoneraciones/${encodeURIComponent(expediente.referenciaInterna)}/control-documental`}
                   state={{ idTramite: expediente.idTramite, estado: expediente.estado }}>
               <i className="bi bi-list-check me-1" aria-hidden="true"></i> Control documental
             </Link>
-            {tienePermiso("EXONERACION_APROBAR") && (
+            {puedeAprobar && (
               <Link className="btn btn-sm btn-outline-secondary" id="btnAprobacionExoneracion"
                     to={`/tramites/exoneraciones/${encodeURIComponent(expediente.referenciaInterna)}/aprobacion`}
                     state={{ idTramite: expediente.idTramite }}>
                 <i className="bi bi-patch-check me-1" aria-hidden="true"></i> Aprobación
               </Link>
             )}
-            <Link className="btn btn-sm btn-outline-secondary" id="btnAutorizacionExonet"
-                  to={`/tramites/exoneraciones/${encodeURIComponent(expediente.referenciaInterna)}/autorizacion-exonet`}
-                  state={{ idTramite: expediente.idTramite, estado: expediente.estado }}>
-              <i className="bi bi-patch-check me-1" aria-hidden="true"></i>Autorización EXONET
-            </Link>
-            <Cmp_SIM_CambioReferencia referenciaInterna={expediente.referenciaInterna}
-                                      codigoTipoActual="EXONERACION"
-                                      onCambiado={irAlExpediente} />
+            {puedeConsultar && (
+              <Link className="btn btn-sm btn-outline-secondary" id="btnAutorizacionExonet"
+                    to={`/tramites/exoneraciones/${encodeURIComponent(expediente.referenciaInterna)}/autorizacion-exonet`}
+                    state={{ idTramite: expediente.idTramite, estado: expediente.estado }}>
+                <i className="bi bi-patch-check me-1" aria-hidden="true"></i>Autorización EXONET
+              </Link>
+            )}
+            {puedeModificar && (
+              <Cmp_SIM_CambioReferencia referenciaInterna={expediente.referenciaInterna}
+                                        codigoTipoActual="EXONERACION"
+                                        onCambiado={irAlExpediente} />
+            )}
             <span className="badge text-bg-warning fs-6">{expediente.estado}</span>
           </div>
         </div>
       </section>
 
       {alerta && <div className={`alert alert-${alerta.tipo}`} role="alert">{alerta.texto}</div>}
+      {!puedeModificar && <Cmp_SIM_AvisoSoloConsulta />}
 
       {pendientes.length > 0 && (
         <div className="alert alert-warning py-2" role="alert">
@@ -423,99 +451,104 @@ function Frm_SIM_ExpedienteExoneracion() {
           <hr />
 
           <form onSubmit={guardarDatos} noValidate>
-            <div className="row g-3">
-              <div className="col-12 col-md-6">
-                <label className="form-label" htmlFor="txtNumeroContratacion">
-                  Número de contratación
-                  <Cmp_SIM_AyudaCampo titulo="el número de contratación">
-                    Corrija el número cuando los agentes lo verifiquen con el usuario. El valor
-                    anterior queda registrado en la bitácora.
-                  </Cmp_SIM_AyudaCampo>
-                </label>
-                <input type="text" className="form-control sim-referencia" id="txtNumeroContratacion"
-                       value={datos.numeroContratacion}
-                       onChange={alEscribirConMascara(
-                         (valor) => setDatos({ ...datos, numeroContratacion: valor }),
-                         PLANTILLAS.contratacion
-                       )} />
+            <fieldset disabled={!puedeModificar}>
+              <div className="row g-3">
+                <div className="col-12 col-md-6">
+                  <label className="form-label" htmlFor="txtNumeroContratacion">
+                    Número de contratación
+                    <Cmp_SIM_AyudaCampo titulo="el número de contratación">
+                      Corrija el número cuando los agentes lo verifiquen con el usuario. El valor
+                      anterior queda registrado en la bitácora.
+                    </Cmp_SIM_AyudaCampo>
+                  </label>
+                  <input type="text" className="form-control sim-referencia" id="txtNumeroContratacion"
+                         value={datos.numeroContratacion}
+                         onChange={alEscribirConMascara(
+                           (valor) => setDatos({ ...datos, numeroContratacion: valor }),
+                           PLANTILLAS.contratacion
+                         )} />
+                </div>
+
+                <div className="col-12 col-md-6">
+                  <label className="form-label" htmlFor="txtOrdenCompraGeco">Orden de compra GECO</label>
+                  <input type="text" className="form-control sim-referencia" id="txtOrdenCompraGeco"
+                         value={datos.ordenCompraGeco}
+                         onChange={alEscribirConMascara(
+                           (valor) => setDatos({ ...datos, ordenCompraGeco: valor }),
+                           PLANTILLAS.ordenCompra
+                         )} />
+                </div>
+
+                <div className="col-12 col-md-6">
+                  <label className="form-label" htmlFor="txtContratoSicop">
+                    Contrato SICOP <span className="sim-opcional">(opcional)</span>
+                  </label>
+                  <input type="text" className="form-control sim-referencia" id="txtContratoSicop"
+                         value={datos.contratoSicop}
+                         onChange={alEscribirConMascara(
+                           (valor) => setDatos({ ...datos, contratoSicop: valor }),
+                           PLANTILLAS.contrato
+                         )} />
+                </div>
+
+                <div className="col-12 col-md-6">
+                  <label className="form-label" htmlFor="txtNumeroExonet">
+                    Número de solicitud EXONET
+                    <Cmp_SIM_AyudaCampo titulo="el número de solicitud EXONET">
+                      Primer número que devuelve EXONET al presentar la solicitud. Antótelo apenas
+                      lo reciba para darle seguimiento al trámite.
+                    </Cmp_SIM_AyudaCampo>
+                  </label>
+                  <input type="text" className="form-control sim-referencia" id="txtNumeroExonet"
+                         maxLength={45} value={datos.numeroExonet}
+                         onChange={(evento) =>
+                           setDatos({ ...datos, numeroExonet: evento.target.value.toUpperCase() })} />
+                </div>
+
+                <div className="col-12 col-md-6">
+                  <label className="form-label" htmlFor="txtNumeroAutorizacionExonet">
+                    Número de autorización EXONET
+                    <Cmp_SIM_AyudaCampo titulo="el número de autorización EXONET">
+                      Segundo número de EXONET, el de la autorización. Es el que se presenta en
+                      aduana y el que cierra el seguimiento de la exoneración.
+                    </Cmp_SIM_AyudaCampo>
+                  </label>
+                  <input type="text" className="form-control sim-referencia"
+                         id="txtNumeroAutorizacionExonet" maxLength={45}
+                         value={datos.numeroAutorizacionExonet}
+                         onChange={(evento) => setDatos({
+                           ...datos, numeroAutorizacionExonet: evento.target.value.toUpperCase(),
+                         })} />
+                </div>
+
+                <div className="col-12">
+                  <label className="form-label" htmlFor="txtObservaciones">Observaciones</label>
+                  <textarea className="form-control" id="txtObservaciones" rows={3} maxLength={4000}
+                            value={datos.observaciones}
+                            onChange={(evento) => setDatos({ ...datos, observaciones: evento.target.value })} />
+                  <div className="form-text text-end">{datos.observaciones.length}/4000</div>
+                </div>
               </div>
 
-              <div className="col-12 col-md-6">
-                <label className="form-label" htmlFor="txtOrdenCompraGeco">Orden de compra GECO</label>
-                <input type="text" className="form-control sim-referencia" id="txtOrdenCompraGeco"
-                       value={datos.ordenCompraGeco}
-                       onChange={alEscribirConMascara(
-                         (valor) => setDatos({ ...datos, ordenCompraGeco: valor }),
-                         PLANTILLAS.ordenCompra
-                       )} />
-              </div>
-
-              <div className="col-12 col-md-6">
-                <label className="form-label" htmlFor="txtContratoSicop">
-                  Contrato SICOP <span className="sim-opcional">(opcional)</span>
-                </label>
-                <input type="text" className="form-control sim-referencia" id="txtContratoSicop"
-                       value={datos.contratoSicop}
-                       onChange={alEscribirConMascara(
-                         (valor) => setDatos({ ...datos, contratoSicop: valor }),
-                         PLANTILLAS.contrato
-                       )} />
-              </div>
-
-              <div className="col-12 col-md-6">
-                <label className="form-label" htmlFor="txtNumeroExonet">
-                  Número de solicitud EXONET
-                  <Cmp_SIM_AyudaCampo titulo="el número de solicitud EXONET">
-                    Primer número que devuelve EXONET al presentar la solicitud. Antótelo apenas
-                    lo reciba para darle seguimiento al trámite.
-                  </Cmp_SIM_AyudaCampo>
-                </label>
-                <input type="text" className="form-control sim-referencia" id="txtNumeroExonet"
-                       maxLength={45} value={datos.numeroExonet}
-                       onChange={(evento) =>
-                         setDatos({ ...datos, numeroExonet: evento.target.value.toUpperCase() })} />
-              </div>
-
-              <div className="col-12 col-md-6">
-                <label className="form-label" htmlFor="txtNumeroAutorizacionExonet">
-                  Número de autorización EXONET
-                  <Cmp_SIM_AyudaCampo titulo="el número de autorización EXONET">
-                    Segundo número de EXONET, el de la autorización. Es el que se presenta en
-                    aduana y el que cierra el seguimiento de la exoneración.
-                  </Cmp_SIM_AyudaCampo>
-                </label>
-                <input type="text" className="form-control sim-referencia"
-                       id="txtNumeroAutorizacionExonet" maxLength={45}
-                       value={datos.numeroAutorizacionExonet}
-                       onChange={(evento) => setDatos({
-                         ...datos, numeroAutorizacionExonet: evento.target.value.toUpperCase(),
-                       })} />
-              </div>
-
-              <div className="col-12">
-                <label className="form-label" htmlFor="txtObservaciones">Observaciones</label>
-                <textarea className="form-control" id="txtObservaciones" rows={3} maxLength={4000}
-                          value={datos.observaciones}
-                          onChange={(evento) => setDatos({ ...datos, observaciones: evento.target.value })} />
-                <div className="form-text text-end">{datos.observaciones.length}/4000</div>
-              </div>
-            </div>
-
-            <div className="d-flex justify-content-end gap-2 mt-3">
-              <button type="button" className="btn btn-outline-secondary" id="btnDeshacerDatos"
-                      onClick={() => refrescar(expediente)}>
-                Deshacer
-              </button>
-              <button type="submit" className="btn btn-sim" id="btnGuardarDatos" disabled={guardando}>
-                <i className="bi bi-save me-1" aria-hidden="true"></i>Guardar correcciones
-              </button>
-            </div>
+              {puedeModificar && (
+                <div className="d-flex justify-content-end gap-2 mt-3">
+                  <button type="button" className="btn btn-outline-secondary" id="btnDeshacerDatos"
+                          onClick={() => refrescar(expediente)}>
+                    Deshacer
+                  </button>
+                  <button type="submit" className="btn btn-sim" id="btnGuardarDatos" disabled={guardando}>
+                    <i className="bi bi-save me-1" aria-hidden="true"></i>Guardar correcciones
+                  </button>
+                </div>
+              )}
+            </fieldset>
           </form>
         </div>
       </div>
 
       <Cmp_SIM_CostosTramite referenciaInterna={referenciaInterna} expediente={expediente}
                              soloImpuestosExonerados
+                             soloLectura={!puedeModificar}
                              alGuardar={() => obtenerExoneracion(referenciaInterna).then(refrescar)} />
 
       <div className="card sim-card mb-4">
@@ -570,7 +603,7 @@ function Frm_SIM_ExpedienteExoneracion() {
                              type="button">
                             Descargar
                           </button>
-                          {vigente && (
+                          {vigente && puedeModificar && (
                             <button type="button" className="btn btn-outline-danger"
                                     onClick={() => setDocumentoPorEliminar(documento)}>
                               <i className="bi bi-trash me-1" aria-hidden="true"></i>Eliminar
@@ -587,27 +620,29 @@ function Frm_SIM_ExpedienteExoneracion() {
         </div>
       </div>
 
-      <div className="card sim-card mb-4">
-        <div className="card-header">
-          <i className="bi bi-cloud-arrow-up me-2" aria-hidden="true"></i>Agregar documentación
-        </div>
-        <div className="card-body">
-          <form onSubmit={adjuntarDocumentos} noValidate>
-            <Cmp_SIM_Documentos documentos={documentosPorAdjuntar} archivos={archivos}
-                                alCambiar={setArchivos} />
+      {puedeModificar && (
+        <div className="card sim-card mb-4">
+          <div className="card-header">
+            <i className="bi bi-cloud-arrow-up me-2" aria-hidden="true"></i>Agregar documentación
+          </div>
+          <div className="card-body">
+            <form onSubmit={adjuntarDocumentos} noValidate>
+              <Cmp_SIM_Documentos documentos={documentosPorAdjuntar} archivos={archivos}
+                                  alCambiar={setArchivos} />
 
-            <div className="d-flex justify-content-end gap-2 mt-3">
-              <button type="button" className="btn btn-outline-secondary" id="btnLimpiarDocumentos"
-                      onClick={() => setArchivos(ARCHIVOS_VACIOS)}>
-                Limpiar
-              </button>
-              <button type="submit" className="btn btn-sim" id="btnAgregarDocumentos" disabled={guardando}>
-                <i className="bi bi-plus-circle me-1" aria-hidden="true"></i>Agregar al expediente
-              </button>
-            </div>
-          </form>
+              <div className="d-flex justify-content-end gap-2 mt-3">
+                <button type="button" className="btn btn-outline-secondary" id="btnLimpiarDocumentos"
+                        onClick={() => setArchivos(ARCHIVOS_VACIOS)}>
+                  Limpiar
+                </button>
+                <button type="submit" className="btn btn-sim" id="btnAgregarDocumentos" disabled={guardando}>
+                  <i className="bi bi-plus-circle me-1" aria-hidden="true"></i>Agregar al expediente
+                </button>
+              </div>
+            </form>
+          </div>
         </div>
-      </div>
+      )}
 
       <div className="card sim-card mb-5" id="seccionBitacora">
         <div className="card-header d-flex flex-wrap justify-content-between align-items-center gap-2">
@@ -649,7 +684,7 @@ function Frm_SIM_ExpedienteExoneracion() {
                       <div>{movimiento.datosNuevos}</div>
                     </td>
                     <td className="text-end d-print-none">
-                      {movimiento.accion === "COMENTARIO" && (
+                      {movimiento.accion === "COMENTARIO" && puedeModificar && (
                         <button type="button" className="btn btn-sm btn-outline-danger"
                                 onClick={() => borrarComentario(movimiento.idBitacora)}
                                 disabled={guardando}>
@@ -663,25 +698,27 @@ function Frm_SIM_ExpedienteExoneracion() {
             </table>
           </div>
 
-          <form className="mt-3 d-print-none" onSubmit={comentar} noValidate>
-            <label className="form-label" htmlFor="txtComentario">
-              Agregar un comentario
-              <Cmp_SIM_AyudaCampo titulo="los comentarios">
-                Sirven para dejar constancia de la gestión: llamadas, correos o acuerdos con la
-                persona usuaria. Quedan en la bitácora con su fecha y su usuario.
-              </Cmp_SIM_AyudaCampo>
-            </label>
-            <textarea className="form-control" id="txtComentario" rows={2} maxLength={1000}
-                      value={comentario}
-                      onChange={(evento) => setComentario(evento.target.value)} />
-            <div className="d-flex justify-content-between align-items-center mt-2">
-              <span className="form-text mb-0">{comentario.length}/1000</span>
-              <button type="submit" className="btn btn-sim btn-sm" id="btnAgregarComentario"
-                      disabled={guardando}>
-                <i className="bi bi-chat-left-text me-1" aria-hidden="true"></i>Agregar comentario
-              </button>
-            </div>
-          </form>
+          {puedeModificar && (
+            <form className="mt-3 d-print-none" onSubmit={comentar} noValidate>
+              <label className="form-label" htmlFor="txtComentario">
+                Agregar un comentario
+                <Cmp_SIM_AyudaCampo titulo="los comentarios">
+                  Sirven para dejar constancia de la gestión: llamadas, correos o acuerdos con la
+                  persona usuaria. Quedan en la bitácora con su fecha y su usuario.
+                </Cmp_SIM_AyudaCampo>
+              </label>
+              <textarea className="form-control" id="txtComentario" rows={2} maxLength={1000}
+                        value={comentario}
+                        onChange={(evento) => setComentario(evento.target.value)} />
+              <div className="d-flex justify-content-between align-items-center mt-2">
+                <span className="form-text mb-0">{comentario.length}/1000</span>
+                <button type="submit" className="btn btn-sim btn-sm" id="btnAgregarComentario"
+                        disabled={guardando}>
+                  <i className="bi bi-chat-left-text me-1" aria-hidden="true"></i>Agregar comentario
+                </button>
+              </div>
+            </form>
+          )}
         </div>
       </div>
 

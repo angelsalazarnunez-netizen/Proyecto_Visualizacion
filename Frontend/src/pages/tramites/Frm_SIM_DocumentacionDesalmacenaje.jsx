@@ -2,6 +2,11 @@ import { useEffect, useMemo, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 
 import Cmp_SIM_Marco from "../../componentes/Cmp_SIM_Marco.jsx";
+import {
+  Cmp_SIM_AvisoSoloConsulta,
+  useSesionActual,
+} from "../../componentes/seguridad/Cmp_SIM_ConPermiso.jsx";
+import { PERMISOS } from "../../utilerias/Permisos.js";
 import Cmp_SIM_Documentos, { contarArchivos } from "../../componentes/Cmp_SIM_Documentos.jsx";
 import { Cmp_SIM_AyudaCampo } from "../../componentes/Cmp_SIM_Ayuda.jsx";
 import {
@@ -25,6 +30,12 @@ import {
  *   Fecha: 02/10/2026
  *   Descripción: la descarga de documentos usa descargarDocumento, que envía el token de la
  *     sesión, en lugar de la ruta directa que se eliminó con el inicio de sesión (HU-004).
+ *
+ *   Responsable: Equipo de Desarrollo SIM
+ *   Fecha: 19/10/2026
+ *   Descripción: restricciones por rol (HU-003). Sin DESALMACENAJE_MODIFICAR la pantalla es de
+ *     consulta: se muestran la clasificación y el estado documental sin poder cambiarlos, y no se
+ *     ofrece agregar documentación.
  */
 
 const USUARIO_ACTUAL = "Analista de Importaciones";
@@ -107,6 +118,8 @@ function formatearFechaHora(valor) {
 }
 
 function Frm_SIM_DocumentacionDesalmacenaje() {
+  // Restricciones por rol (HU-003): sin el permiso de modificar, la pantalla es de consulta.
+  const puedeModificar = useSesionActual().tieneAlguno([PERMISOS.DESALMACENAJE_MODIFICAR]);
   const { referenciaInterna } = useParams();
   const [expediente, setExpediente] = useState(null);
   const [clasificaciones, setClasificaciones] = useState({});
@@ -267,6 +280,7 @@ function Frm_SIM_DocumentacionDesalmacenaje() {
       </section>
 
       {alerta && <div className={`alert alert-${alerta.tipo}`} role="alert">{alerta.texto}</div>}
+      {!puedeModificar && <Cmp_SIM_AvisoSoloConsulta />}
 
       <div className="card sim-card mb-4">
         <div className="card-header d-flex justify-content-between align-items-center">
@@ -275,108 +289,114 @@ function Frm_SIM_DocumentacionDesalmacenaje() {
         </div>
         <div className="card-body">
           <form onSubmit={guardarClasificacion} noValidate>
-            <div className="table-responsive">
-              <table className="table table-sm align-middle mb-0">
-                <caption className="visually-hidden">
-                  Documentos del expediente y su clasificación
-                </caption>
-                <thead>
-                  <tr>
-                    <th scope="col">Archivo</th>
-                    <th scope="col">Clasificación</th>
-                    <th scope="col">Versión</th>
-                    <th scope="col">Cargado</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {documentosVigentes.length === 0 && (
+            <fieldset disabled={!puedeModificar}>
+              <div className="table-responsive">
+                <table className="table table-sm align-middle mb-0">
+                  <caption className="visually-hidden">
+                    Documentos del expediente y su clasificación
+                  </caption>
+                  <thead>
                     <tr>
-                      <td colSpan={4} className="text-muted small">
-                        El expediente todavía no tiene documentación registrada.
-                      </td>
+                      <th scope="col">Archivo</th>
+                      <th scope="col">Clasificación</th>
+                      <th scope="col">Versión</th>
+                      <th scope="col">Cargado</th>
                     </tr>
-                  )}
-
-                  {documentosVigentes.map((documento) => {
-                    const actual = CLASIFICACIONES.find(
-                      (clasificacion) => clasificacion.nombre === documento.tipoDocumento
-                    );
-                    return (
-                      <tr key={documento.idDocumento}>
-                        <td>
-                          <button type="button" className="btn btn-link btn-sm p-0 text-start"
-                                  onClick={() => descargarDocumento(
-                                    documento.idDocumento,
-                                    documento.nombreArchivo
-                                  ).catch((problema) => setAlerta({
-                                    tipo: "danger",
-                                    texto: `No fue posible descargar el documento. ${problema.message}`,
-                                  }))}>
-                            {documento.nombreArchivo}
-                          </button>
+                  </thead>
+                  <tbody>
+                    {documentosVigentes.length === 0 && (
+                      <tr>
+                        <td colSpan={4} className="text-muted small">
+                          El expediente todavía no tiene documentación registrada.
                         </td>
-                        <td>
-                          <label className="visually-hidden" htmlFor={`cmbClasificacion${documento.idDocumento}`}>
-                            Clasificación de {documento.nombreArchivo}
-                          </label>
-                          <select className="form-select form-select-sm"
-                                  id={`cmbClasificacion${documento.idDocumento}`}
-                                  value={clasificaciones[documento.idDocumento] ?? actual?.codigo ?? ""}
-                                  onChange={(evento) => setClasificaciones({
-                                    ...clasificaciones, [documento.idDocumento]: evento.target.value,
-                                  })}>
-                            <option value="">Sin clasificar</option>
-                            {CLASIFICACIONES.map((clasificacion) => (
-                              <option value={clasificacion.codigo} key={clasificacion.codigo}>
-                                {clasificacion.nombre}
-                              </option>
-                            ))}
-                          </select>
-                        </td>
-                        <td className="text-center">{documento.version}</td>
-                        <td>{formatearFechaHora(documento.fechaCarga)}</td>
                       </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
+                    )}
 
-            <div className="d-flex justify-content-end gap-2 mt-3">
-              <button type="button" className="btn btn-outline-secondary" id="btnDeshacerClasificacion"
-                      onClick={() => setClasificaciones({})} disabled={cambiosDeClasificacion.length === 0}>
-                Deshacer
-              </button>
-              <button type="submit" className="btn btn-sim" id="btnGuardarClasificacion"
-                      disabled={guardando || cambiosDeClasificacion.length === 0}>
-                {guardando ? "Guardando..." : `Guardar clasificación (${cambiosDeClasificacion.length})`}
-              </button>
-            </div>
+                    {documentosVigentes.map((documento) => {
+                      const actual = CLASIFICACIONES.find(
+                        (clasificacion) => clasificacion.nombre === documento.tipoDocumento
+                      );
+                      return (
+                        <tr key={documento.idDocumento}>
+                          <td>
+                            <button type="button" className="btn btn-link btn-sm p-0 text-start"
+                                    onClick={() => descargarDocumento(
+                                      documento.idDocumento,
+                                      documento.nombreArchivo
+                                    ).catch((problema) => setAlerta({
+                                      tipo: "danger",
+                                      texto: `No fue posible descargar el documento. ${problema.message}`,
+                                    }))}>
+                              {documento.nombreArchivo}
+                            </button>
+                          </td>
+                          <td>
+                            <label className="visually-hidden" htmlFor={`cmbClasificacion${documento.idDocumento}`}>
+                              Clasificación de {documento.nombreArchivo}
+                            </label>
+                            <select className="form-select form-select-sm"
+                                    id={`cmbClasificacion${documento.idDocumento}`}
+                                    value={clasificaciones[documento.idDocumento] ?? actual?.codigo ?? ""}
+                                    onChange={(evento) => setClasificaciones({
+                                      ...clasificaciones, [documento.idDocumento]: evento.target.value,
+                                    })}>
+                              <option value="">Sin clasificar</option>
+                              {CLASIFICACIONES.map((clasificacion) => (
+                                <option value={clasificacion.codigo} key={clasificacion.codigo}>
+                                  {clasificacion.nombre}
+                                </option>
+                              ))}
+                            </select>
+                          </td>
+                          <td className="text-center">{documento.version}</td>
+                          <td>{formatearFechaHora(documento.fechaCarga)}</td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+
+              {puedeModificar && (
+                <div className="d-flex justify-content-end gap-2 mt-3">
+                  <button type="button" className="btn btn-outline-secondary" id="btnDeshacerClasificacion"
+                          onClick={() => setClasificaciones({})} disabled={cambiosDeClasificacion.length === 0}>
+                    Deshacer
+                  </button>
+                  <button type="submit" className="btn btn-sim" id="btnGuardarClasificacion"
+                          disabled={guardando || cambiosDeClasificacion.length === 0}>
+                    {guardando ? "Guardando..." : `Guardar clasificación (${cambiosDeClasificacion.length})`}
+                  </button>
+                </div>
+              )}
+            </fieldset>
           </form>
         </div>
       </div>
 
-      <div className="card sim-card mb-4">
-        <div className="card-header">
-          <i className="bi bi-paperclip me-2" aria-hidden="true"></i>Agregar documentación probatoria
+      {puedeModificar && (
+        <div className="card sim-card mb-4">
+          <div className="card-header">
+            <i className="bi bi-paperclip me-2" aria-hidden="true"></i>Agregar documentación probatoria
+          </div>
+          <div className="card-body">
+            <form onSubmit={adjuntar} noValidate>
+              <Cmp_SIM_Documentos documentos={DOCUMENTOS_POR_ADJUNTAR} archivos={archivos}
+                                  alCambiar={setArchivos} />
+              <div className="d-flex justify-content-end gap-2 mt-3">
+                <button type="button" className="btn btn-outline-secondary" id="btnLimpiarArchivos"
+                        onClick={() => setArchivos(ARCHIVOS_VACIOS)}>
+                  Limpiar
+                </button>
+                <button type="submit" className="btn btn-sim" id="btnAgregarDocumentos"
+                        disabled={guardando || contarArchivos(archivos) === 0}>
+                  Agregar al expediente
+                </button>
+              </div>
+            </form>
+          </div>
         </div>
-        <div className="card-body">
-          <form onSubmit={adjuntar} noValidate>
-            <Cmp_SIM_Documentos documentos={DOCUMENTOS_POR_ADJUNTAR} archivos={archivos}
-                                alCambiar={setArchivos} />
-            <div className="d-flex justify-content-end gap-2 mt-3">
-              <button type="button" className="btn btn-outline-secondary" id="btnLimpiarArchivos"
-                      onClick={() => setArchivos(ARCHIVOS_VACIOS)}>
-                Limpiar
-              </button>
-              <button type="submit" className="btn btn-sim" id="btnAgregarDocumentos"
-                      disabled={guardando || contarArchivos(archivos) === 0}>
-                Agregar al expediente
-              </button>
-            </div>
-          </form>
-        </div>
-      </div>
+      )}
 
       <div className="card sim-card mb-4">
         <div className="card-header">
@@ -408,43 +428,47 @@ function Frm_SIM_DocumentacionDesalmacenaje() {
           )}
 
           <form onSubmit={guardarEstado} noValidate>
-            <fieldset className="mb-3">
-              <legend className="form-label sim-requerido h6">
-                El expediente está
-                <Cmp_SIM_AyudaCampo titulo="el estado documental">
-                  Completo significa que el expediente reúne la documentación que exige el trámite.
-                  Incompleto deja constancia de que falta algo y de qué se está a la espera.
-                </Cmp_SIM_AyudaCampo>
-              </legend>
+            <fieldset disabled={!puedeModificar}>
+              <fieldset className="mb-3">
+                <legend className="form-label sim-requerido h6">
+                  El expediente está
+                  <Cmp_SIM_AyudaCampo titulo="el estado documental">
+                    Completo significa que el expediente reúne la documentación que exige el trámite.
+                    Incompleto deja constancia de que falta algo y de qué se está a la espera.
+                  </Cmp_SIM_AyudaCampo>
+                </legend>
 
-              <div className="form-check">
-                <input className="form-check-input" type="radio" name="estadoDocumental" id="optCompleto"
-                       value="COMPLETO" checked={estadoDocumental === "COMPLETO"}
-                       onChange={(evento) => setEstadoDocumental(evento.target.value)} />
-                <label className="form-check-label" htmlFor="optCompleto">Documentalmente completo</label>
-              </div>
+                <div className="form-check">
+                  <input className="form-check-input" type="radio" name="estadoDocumental" id="optCompleto"
+                         value="COMPLETO" checked={estadoDocumental === "COMPLETO"}
+                         onChange={(evento) => setEstadoDocumental(evento.target.value)} />
+                  <label className="form-check-label" htmlFor="optCompleto">Documentalmente completo</label>
+                </div>
 
-              <div className="form-check">
-                <input className="form-check-input" type="radio" name="estadoDocumental" id="optIncompleto"
-                       value="INCOMPLETO" checked={estadoDocumental === "INCOMPLETO"}
-                       onChange={(evento) => setEstadoDocumental(evento.target.value)} />
-                <label className="form-check-label" htmlFor="optIncompleto">Documentalmente incompleto</label>
-              </div>
+                <div className="form-check">
+                  <input className="form-check-input" type="radio" name="estadoDocumental" id="optIncompleto"
+                         value="INCOMPLETO" checked={estadoDocumental === "INCOMPLETO"}
+                         onChange={(evento) => setEstadoDocumental(evento.target.value)} />
+                  <label className="form-check-label" htmlFor="optIncompleto">Documentalmente incompleto</label>
+                </div>
+              </fieldset>
+
+              <label className="form-label" htmlFor="txtObservacionesDocumentales">
+                Observaciones documentales <span className="sim-opcional">(opcional)</span>
+              </label>
+              <textarea className="form-control" id="txtObservacionesDocumentales" rows={3} maxLength={1000}
+                        value={observaciones}
+                        onChange={(evento) => setObservaciones(evento.target.value)} />
+              <div className="form-text text-end">{observaciones.length}/1000</div>
+
+              {puedeModificar && (
+                <div className="d-flex justify-content-end mt-3">
+                  <button type="submit" className="btn btn-sim" id="btnGuardarEstadoDocumental" disabled={guardando}>
+                    {guardando ? "Guardando..." : "Guardar estado documental"}
+                  </button>
+                </div>
+              )}
             </fieldset>
-
-            <label className="form-label" htmlFor="txtObservacionesDocumentales">
-              Observaciones documentales <span className="sim-opcional">(opcional)</span>
-            </label>
-            <textarea className="form-control" id="txtObservacionesDocumentales" rows={3} maxLength={1000}
-                      value={observaciones}
-                      onChange={(evento) => setObservaciones(evento.target.value)} />
-            <div className="form-text text-end">{observaciones.length}/1000</div>
-
-            <div className="d-flex justify-content-end mt-3">
-              <button type="submit" className="btn btn-sim" id="btnGuardarEstadoDocumental" disabled={guardando}>
-                {guardando ? "Guardando..." : "Guardar estado documental"}
-              </button>
-            </div>
           </form>
         </div>
       </div>

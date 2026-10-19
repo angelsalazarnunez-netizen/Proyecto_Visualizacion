@@ -2,6 +2,10 @@ import { useEffect, useState } from "react";
 import { Link, useLocation, useParams } from "react-router-dom";
 
 import Cmp_SIM_Marco from "../../componentes/Cmp_SIM_Marco.jsx";
+import Cmp_SIM_ConPermiso, {
+  useSesionActual,
+} from "../../componentes/seguridad/Cmp_SIM_ConPermiso.jsx";
+import { PERMISOS } from "../../utilerias/Permisos.js";
 import { Cmp_SIM_AyudaCampo } from "../../componentes/Cmp_SIM_Ayuda.jsx";
 import { obtenerSesion } from "../../servicios/Srv_SIM_Autenticacion.js";
 import {
@@ -24,6 +28,12 @@ import "./Frm_SIM_ControlDocumentalExoneracion.css";
  *   05/10/2026 Equipo de Desarrollo SIM: creación de la pantalla.
  *   05/10/2026 Equipo de Desarrollo SIM: con la HU-022 el expediente puede estar aprobado,
  *     rechazado o pendiente de modificación; el mensaje indica el estado real del expediente.
+ *
+ *   Responsable: Equipo de Desarrollo SIM
+ *   Fecha: 19/10/2026
+ *   Descripción: restricciones por rol (HU-003). Adjuntar documentos y continuar a aprobación exigen
+ *     EXONERACION_MODIFICAR; la revisión documental, EXONERACION_CONSULTAR. Quien solo aprueba ve el
+ *     control sin esas acciones.
  */
 
 const USUARIO_ACTUAL = "Técnica de Exoneraciones";
@@ -101,6 +111,11 @@ function unirNombres(nombres) {
 }
 
 function Frm_SIM_ControlDocumentalExoneracion() {
+  // Restricciones por rol (HU-003): sin el permiso de modificar, la pantalla es de consulta.
+  const { tieneAlguno } = useSesionActual();
+  const puedeModificar = tieneAlguno([PERMISOS.EXONERACION_MODIFICAR]);
+  // Quien solo aprueba ve el control, pero no la revisión documental.
+  const puedeConsultar = tieneAlguno([PERMISOS.EXONERACION_CONSULTAR]);
   const { referenciaInterna } = useParams();
   const { state: estadoNavegacion } = useLocation();
   const idTramiteNavegacion = normalizarIdTramite(estadoNavegacion?.idTramite);
@@ -185,7 +200,7 @@ function Frm_SIM_ControlDocumentalExoneracion() {
   const migas = (
     <nav aria-label="Ruta de navegación">
       <ol className="breadcrumb small">
-        <li className="breadcrumb-item"><Link to="/tramites/exoneracion">Exoneraciones</Link></li>
+        <li className="breadcrumb-item"><Cmp_SIM_ConPermiso permisos={[PERMISOS.EXONERACION_CREAR]} alterno="Exoneraciones"><Link to="/tramites/exoneracion">Exoneraciones</Link></Cmp_SIM_ConPermiso></li>
         <li className="breadcrumb-item">
           <Link to={rutaExpediente} state={estadoEnlace}>{referenciaInterna}</Link>
         </li>
@@ -378,25 +393,31 @@ function Frm_SIM_ControlDocumentalExoneracion() {
             Estado documental: {completo ? "completo" : "incompleto"}
           </span>
           <div className="d-flex flex-wrap gap-2">
-            <Link className="btn btn-outline-secondary" id="btnAdjuntarDocumentos"
-                  to={rutaExpediente} state={estadoEnlace}>
-              <i className="bi bi-paperclip me-1" aria-hidden="true"></i>
-              Adjuntar documentos
-            </Link>
-            <Link className="btn btn-outline-secondary" id="btnIrRevisionDocumental"
-                  to={`${rutaExpediente}/revision-documental`} state={estadoEnlace}>
-              <i className="bi bi-file-earmark-check me-1" aria-hidden="true"></i>
-              Revisión documental
-            </Link>
-            <button type="button" className="btn btn-sim" id="btnContinuarAprobacion"
-                    disabled={!control.puedeContinuarAprobacion || enviando}
-                    title={control.puedeContinuarAprobacion ? undefined
-                      : enAprobacion ? textoNoEnvio
-                        : "Se habilita cuando la documentación obligatoria esté completa."}
-                    onClick={() => setConfirmando(true)}>
-              <i className="bi bi-send-check me-1" aria-hidden="true"></i>
-              Continuar a aprobación
-            </button>
+            {puedeModificar && (
+              <Link className="btn btn-outline-secondary" id="btnAdjuntarDocumentos"
+                    to={rutaExpediente} state={estadoEnlace}>
+                <i className="bi bi-paperclip me-1" aria-hidden="true"></i>
+                Adjuntar documentos
+              </Link>
+            )}
+            {puedeConsultar && (
+              <Link className="btn btn-outline-secondary" id="btnIrRevisionDocumental"
+                    to={`${rutaExpediente}/revision-documental`} state={estadoEnlace}>
+                <i className="bi bi-file-earmark-check me-1" aria-hidden="true"></i>
+                Revisión documental
+              </Link>
+            )}
+            {puedeModificar && (
+              <button type="button" className="btn btn-sim" id="btnContinuarAprobacion"
+                      disabled={!control.puedeContinuarAprobacion || enviando}
+                      title={control.puedeContinuarAprobacion ? undefined
+                        : enAprobacion ? textoNoEnvio
+                          : "Se habilita cuando la documentación obligatoria esté completa."}
+                      onClick={() => setConfirmando(true)}>
+                <i className="bi bi-send-check me-1" aria-hidden="true"></i>
+                Continuar a aprobación
+              </button>
+            )}
           </div>
         </div>
       </div>

@@ -1,6 +1,7 @@
 package cr.ac.ucr.sim.sla;
 
 import cr.ac.ucr.sim.logicanegocio.seguridad.BllUsuario;
+import cr.ac.ucr.sim.seguridad.AccesoPublico;
 import cr.ac.ucr.sim.utilerias.modelo.seguridad.ModeloRegistroUsuarioSolicitud;
 import cr.ac.ucr.sim.utilerias.modelo.seguridad.ModeloRegistroUsuarioRespuesta;
 import org.springframework.http.HttpStatus;
@@ -38,6 +39,7 @@ public class Ws_SIM_RegistroUsuario {
      * @param vlo_Registro datos del registro.
      * @return resultado del registro.
      */
+    @AccesoPublico
     @PostMapping("/registro")
     public ResponseEntity<ModeloRegistroUsuarioRespuesta>
     RegistrarUsuario(
@@ -61,6 +63,7 @@ public class Ws_SIM_RegistroUsuario {
      * @param vlc_Token token de verificacion.
      * @return resultado de la verificacion.
      */
+    @AccesoPublico
     @GetMapping("/verificar")
     public ResponseEntity<ModeloRegistroUsuarioRespuesta>
     VerificarCorreo(

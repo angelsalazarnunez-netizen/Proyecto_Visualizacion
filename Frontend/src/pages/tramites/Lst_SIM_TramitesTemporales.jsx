@@ -2,6 +2,8 @@ import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 
 import Cmp_SIM_Marco from "../../componentes/Cmp_SIM_Marco.jsx";
+import Cmp_SIM_ConPermiso from "../../componentes/seguridad/Cmp_SIM_ConPermiso.jsx";
+import { PERMISOS } from "../../utilerias/Permisos.js";
 import Cmp_SIM_CuentaRegresiva, { formatearFechaLocal } from "../../componentes/Cmp_SIM_CuentaRegresiva.jsx";
 import {
   TIPOS_TRAMITE_TEMPORAL,
@@ -27,6 +29,11 @@ import { obtenerTramitesTemporales } from "../../servicios/Srv_SIM_Tramites.js";
  *
  * @param {object} props
  * @param {string} props.tipo importacion o exportacion
+ *
+ *   Responsable: Equipo de Desarrollo SIM
+ *   Fecha: 19/10/2026
+ *   Descripción: restricciones por rol (HU-003): el botón de registrar solo se muestra con
+ *     ADUANERO_TEMPORAL_CREAR.
  */
 
 const ALCANCES = [
@@ -80,10 +87,12 @@ function Lst_SIM_TramitesTemporales({ tipo }) {
               <i className="bi bi-bell me-1" aria-hidden="true"></i>
               Alertas de vencimiento
             </Link>
-            <Link className="btn btn-sim" to={`${configuracion.ruta}/nueva`}>
-              <i className="bi bi-plus-circle me-1" aria-hidden="true"></i>
-              Registrar {configuracion.singular}
-            </Link>
+            <Cmp_SIM_ConPermiso permisos={[PERMISOS.ADUANERO_TEMPORAL_CREAR]}>
+              <Link className="btn btn-sim" to={`${configuracion.ruta}/nueva`}>
+                <i className="bi bi-plus-circle me-1" aria-hidden="true"></i>
+                Registrar {configuracion.singular}
+              </Link>
+            </Cmp_SIM_ConPermiso>
           </div>
         </div>
       </section>

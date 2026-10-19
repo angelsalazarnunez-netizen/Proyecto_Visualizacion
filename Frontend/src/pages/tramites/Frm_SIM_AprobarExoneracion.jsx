@@ -3,7 +3,9 @@ import { Link, useLocation, useParams } from "react-router-dom";
 
 import Cmp_SIM_Marco from "../../componentes/Cmp_SIM_Marco.jsx";
 import { Cmp_SIM_AyudaCampo } from "../../componentes/Cmp_SIM_Ayuda.jsx";
-import { obtenerSesion, tienePermiso } from "../../servicios/Srv_SIM_Autenticacion.js";
+import { obtenerSesion } from "../../servicios/Srv_SIM_Autenticacion.js";
+import { PERMISOS } from "../../utilerias/Permisos.js";
+import Cmp_SIM_ConPermiso, { useSesionActual } from "../../componentes/seguridad/Cmp_SIM_ConPermiso.jsx";
 import {
   obtenerDecisionExoneracion,
   obtenerExoneracion,
@@ -23,6 +25,11 @@ import "./Frm_SIM_AprobarExoneracion.css";
  *
  * Historial de cambios:
  *   05/10/2026 Equipo de Desarrollo SIM: creación de la pantalla.
+ *
+ *   Responsable: Equipo de Desarrollo SIM
+ *   Fecha: 19/10/2026
+ *   Descripción: el permiso de aprobar se lee con useSesionActual, que se actualiza si cambian los
+ *     roles de la sesión (restricciones por rol, HU-003).
  */
 
 const PERMISO_APROBAR = "EXONERACION_APROBAR";
@@ -118,7 +125,8 @@ function Frm_SIM_AprobarExoneracion() {
   const [enviando, setEnviando] = useState(false);
 
   const usuario = obtenerSesion()?.nombreCompleto || "Jefatura";
-  const autorizadoEnSesion = tienePermiso(PERMISO_APROBAR);
+  // Se actualiza si cambian los permisos de la sesión (restricciones por rol, HU-003).
+  const autorizadoEnSesion = useSesionActual().tieneAlguno([PERMISO_APROBAR]);
 
   useEffect(() => {
     let vigente = true;
@@ -207,7 +215,7 @@ function Frm_SIM_AprobarExoneracion() {
       <ol className="breadcrumb small">
         {autorizadoEnSesion
           ? <li className="breadcrumb-item"><Link to="/tramites/exoneraciones/aprobaciones">Aprobaciones</Link></li>
-          : <li className="breadcrumb-item"><Link to="/tramites/exoneracion">Exoneraciones</Link></li>}
+          : <li className="breadcrumb-item"><Cmp_SIM_ConPermiso permisos={[PERMISOS.EXONERACION_CREAR]} alterno="Exoneraciones"><Link to="/tramites/exoneracion">Exoneraciones</Link></Cmp_SIM_ConPermiso></li>}
         <li className="breadcrumb-item">
           <Link to={rutaExpediente} state={{ idTramite: resumen?.idTramite, estado: resumen?.estadoExpediente }}>
             {referenciaInterna}

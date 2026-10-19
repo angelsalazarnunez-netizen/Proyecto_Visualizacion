@@ -1,5 +1,7 @@
 package cr.ac.ucr.sim.sla;
 
+import cr.ac.ucr.sim.seguridad.ReglasAcceso;
+import org.springframework.security.access.prepost.PreAuthorize;
 import cr.ac.ucr.sim.entidadnegocio.tramites.exoneraciones.EntObservacionExpediente;
 import cr.ac.ucr.sim.entidadnegocio.tramites.exoneraciones.EntRevisionDocumento;
 import cr.ac.ucr.sim.logicanegocio.tramites.exoneraciones.BllAprobacionExoneracion;
@@ -33,6 +35,9 @@ import java.util.Map;
  *     la continuacion del expediente a aprobacion (HU-021).
  *   05/10/2026 Equipo de Desarrollo SIM: se agregan la bandeja de aprobaciones y el registro de
  *     la decision de la jefatura (HU-022).
+ *   19/10/2026 Equipo de Desarrollo SIM: restricciones por rol (HU-003). Cada servicio declara su
+ *     permiso con @PreAuthorize (ver ReglasAcceso): consultar o modificar exoneraciones, o
+ *     aprobarlas en la bandeja y la decision.
  */
 @RestController
 @RequestMapping("/api/v1/exoneraciones")
@@ -73,6 +78,7 @@ public class Ws_SIM_Exoneraciones {
      * @return requisitos documentales junto con el
      * estado actual de sus documentos y revisiones.
      */
+    @PreAuthorize(ReglasAcceso.EXONERACION_CONSULTAR)
     @GetMapping("/{vln_IdTramite}/documentos/revision")
     public ResponseEntity<List<ModeloRevisionDocumentoRespuesta>>
     SIMT_REVISION_DOCUMENTO_ObtenerChecklist(
@@ -100,6 +106,7 @@ public class Ws_SIM_Exoneraciones {
      * @param vlo_Usuario usuario autenticado responsable.
      * @return revision documental registrada.
      */
+    @PreAuthorize(ReglasAcceso.EXONERACION_MODIFICAR)
     @PatchMapping(
             "/{vln_IdTramite}/documentos/"
                     + "{vln_IdDocumento}/revision"
@@ -171,6 +178,7 @@ public class Ws_SIM_Exoneraciones {
      * @param vln_IdDocumento identificador del documento.
      * @return revisiones historicas del documento.
      */
+    @PreAuthorize(ReglasAcceso.EXONERACION_CONSULTAR)
     @GetMapping(
             "/{vln_IdTramite}/documentos/"
                     + "{vln_IdDocumento}/revision/historial"
@@ -207,6 +215,7 @@ public class Ws_SIM_Exoneraciones {
      * @param pvn_IdTramite identificador del expediente
      * @return control documental del expediente
      */
+    @PreAuthorize(ReglasAcceso.EXONERACION_CONSULTA_O_APROBACION)
     @GetMapping("/{vln_IdTramite}/documentos/control")
     public ResponseEntity<ModeloControlDocumentalRespuesta> SIMT_REQUISITO_DOCUMENTAL_ObtenerControl(
             @PathVariable("vln_IdTramite") Integer pvn_IdTramite) {
@@ -223,6 +232,7 @@ public class Ws_SIM_Exoneraciones {
      * @param pvo_Usuario usuario autenticado
      * @return control documental del expediente ya en "Pendiente de aprobación"
      */
+    @PreAuthorize(ReglasAcceso.EXONERACION_MODIFICAR)
     @PostMapping("/{vln_IdTramite}/aprobacion")
     public ResponseEntity<ModeloControlDocumentalRespuesta> SIMT_TRAMITE_ContinuarAprobacion(
             @PathVariable("vln_IdTramite") Integer pvn_IdTramite,
@@ -245,6 +255,7 @@ public class Ws_SIM_Exoneraciones {
      * @param pvo_Usuario usuario autenticado
      * @return solicitudes pendientes de aprobación
      */
+    @PreAuthorize(ReglasAcceso.EXONERACION_APROBAR)
     @GetMapping("/aprobaciones/pendientes")
     public ResponseEntity<List<ModeloAprobacionPendienteRespuesta>> SIMT_DECISION_EXONERACION_ObtenerPendientes(
             @AuthenticationPrincipal UsuarioAutenticado pvo_Usuario) {
@@ -261,6 +272,7 @@ public class Ws_SIM_Exoneraciones {
      * @param pvo_Usuario usuario autenticado
      * @return resumen para la aprobación
      */
+    @PreAuthorize(ReglasAcceso.EXONERACION_CONSULTA_O_APROBACION)
     @GetMapping("/{vln_IdTramite}/decision")
     public ResponseEntity<ModeloAprobacionRespuesta> SIMT_DECISION_EXONERACION_ObtenerResumen(
             @PathVariable("vln_IdTramite") Integer pvn_IdTramite,
@@ -280,6 +292,7 @@ public class Ws_SIM_Exoneraciones {
      * @param pvo_Usuario usuario autenticado
      * @return resumen del expediente con la decisión registrada
      */
+    @PreAuthorize(ReglasAcceso.EXONERACION_APROBAR)
     @PostMapping("/{vln_IdTramite}/decision")
     public ResponseEntity<ModeloAprobacionRespuesta> SIMT_DECISION_EXONERACION_InsertarRegistro(
             @PathVariable("vln_IdTramite") Integer pvn_IdTramite,
@@ -307,6 +320,7 @@ public class Ws_SIM_Exoneraciones {
      * @param pvo_Usuario usuario autenticado
      * @return borradores propios e historial confirmado
      */
+    @PreAuthorize(ReglasAcceso.EXONERACION_CONSULTAR)
     @GetMapping("/{vln_IdTramite}/observaciones")
     public ResponseEntity<ModeloObservacionesExpedienteRespuesta> SIMT_OBSERVACION_EXPED_ObtenerLista(
             @PathVariable("vln_IdTramite") Integer pvn_IdTramite,
@@ -326,6 +340,7 @@ public class Ws_SIM_Exoneraciones {
      * @param pvo_Usuario usuario autenticado, que queda como autor
      * @return observación registrada
      */
+    @PreAuthorize(ReglasAcceso.EXONERACION_MODIFICAR)
     @PostMapping("/{vln_IdTramite}/observaciones")
     public ResponseEntity<ModeloObservacionRespuesta> SIMT_OBSERVACION_EXPED_InsertarRegistro(
             @PathVariable("vln_IdTramite") Integer pvn_IdTramite,
@@ -352,6 +367,7 @@ public class Ws_SIM_Exoneraciones {
      * @param pvo_Usuario usuario autenticado
      * @return borrador modificado
      */
+    @PreAuthorize(ReglasAcceso.EXONERACION_MODIFICAR)
     @PutMapping("/{vln_IdTramite}/observaciones/{vln_IdObservacion}")
     public ResponseEntity<ModeloObservacionRespuesta> SIMT_OBSERVACION_EXPED_ModificarRegistro(
             @PathVariable("vln_IdTramite") Integer pvn_IdTramite,
@@ -378,6 +394,7 @@ public class Ws_SIM_Exoneraciones {
      * @param pvo_Usuario usuario autenticado
      * @return borradores propios e historial confirmado, ya sin el borrador eliminado
      */
+    @PreAuthorize(ReglasAcceso.EXONERACION_MODIFICAR)
     @DeleteMapping("/{vln_IdTramite}/observaciones/{vln_IdObservacion}")
     public ResponseEntity<ModeloObservacionesExpedienteRespuesta> SIMT_OBSERVACION_EXPED_EliminarRegistro(
             @PathVariable("vln_IdTramite") Integer pvn_IdTramite,
@@ -399,6 +416,7 @@ public class Ws_SIM_Exoneraciones {
      * @param pvo_Usuario usuario autenticado
      * @return observación confirmada
      */
+    @PreAuthorize(ReglasAcceso.EXONERACION_MODIFICAR)
     @PostMapping("/{vln_IdTramite}/observaciones/{vln_IdObservacion}/confirmacion")
     public ResponseEntity<ModeloObservacionRespuesta> SIMT_OBSERVACION_EXPED_ConfirmarRegistro(
             @PathVariable("vln_IdTramite") Integer pvn_IdTramite,

@@ -1,5 +1,7 @@
 package cr.ac.ucr.sim.sla;
 
+import cr.ac.ucr.sim.seguridad.ReglasAcceso;
+import org.springframework.security.access.prepost.PreAuthorize;
 import cr.ac.ucr.sim.entidadnegocio.seguridad.EntPermiso;
 import cr.ac.ucr.sim.entidadnegocio.seguridad.EntRol;
 import cr.ac.ucr.sim.entidadnegocio.autenticacion.EntUsuario;
@@ -10,6 +12,7 @@ import cr.ac.ucr.sim.logicanegocio.seguridad.BllRolPermiso;
 import cr.ac.ucr.sim.logicanegocio.seguridad.BllUsuarioRol;
 import cr.ac.ucr.sim.seguridad.UsuarioAutenticado;
 import cr.ac.ucr.sim.utilerias.ConstantesSeguridad;
+import cr.ac.ucr.sim.utilerias.Enumerados;
 import cr.ac.ucr.sim.utilerias.modelo.seguridad.*;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -34,6 +37,16 @@ import java.util.List;
  *   Fecha: 12/10/2026
  *   Descripción: heurística H2 (EH5-01). Se agrega la consulta del efecto de inactivar un rol,
  *     para advertir cuántas personas quedarían sin roles activos.
+ *
+ *   Responsable: Equipo de Desarrollo SIM
+ *   Fecha: 19/10/2026
+ *   Descripción: cada permiso se devuelve con el código y el nombre de su módulo de acceso
+ *     (HU-003), para agruparlos en la pantalla de roles.
+ *
+ *   Responsable: Equipo de Desarrollo SIM
+ *   Fecha: 19/10/2026
+ *   Descripción: restricciones por rol (HU-003). Solo quien tenga los permisos de administración
+ *     de usuarios puede registrar, modificar o asignar roles; cualquier otro usuario recibe 403.
  */
 @RestController
 @RequestMapping("/api/v1/seguridad")
@@ -61,6 +74,7 @@ public class Ws_SIM_Seguridad {
      * @param vlo_Solicitud datos del rol.
      * @return rol registrado.
      */
+    @PreAuthorize(ReglasAcceso.ROL_CREAR)
     @PostMapping("/roles")
     public ResponseEntity<ModeloRolRespuesta>
     SIMM_ROL_InsertarRegistro(
@@ -85,6 +99,7 @@ public class Ws_SIM_Seguridad {
      * Descripcion: obtiene todos los roles registrados.
      * @return lista de roles.
      */
+    @PreAuthorize(ReglasAcceso.ROL_CONSULTA)
     @GetMapping("/roles")
     public ResponseEntity<List<ModeloRolRespuesta>>
     SIMM_ROL_ObtenerRegistros() {
@@ -103,6 +118,7 @@ public class Ws_SIM_Seguridad {
      * @param vln_IdRol id del rol.
      * @return rol encontrado.
      */
+    @PreAuthorize(ReglasAcceso.ROL_CONSULTA)
     @GetMapping("/roles/{vln_IdRol}")
     public ResponseEntity<ModeloRolRespuesta>
     SIMM_ROL_ObtenerRegistro(
@@ -123,6 +139,7 @@ public class Ws_SIM_Seguridad {
      * @param vlo_Solicitud datos actualizados.
      * @return rol actualizado.
      */
+    @PreAuthorize(ReglasAcceso.ROL_MODIFICAR)
     @PutMapping("/roles/{vln_IdRol}")
     public ResponseEntity<ModeloRolRespuesta>
     SIMM_ROL_ModificarRegistro(
@@ -148,6 +165,7 @@ public class Ws_SIM_Seguridad {
      * @param vlo_Solicitud nuevo estado del rol.
      * @return rol con su estado actualizado.
      */
+    @PreAuthorize(ReglasAcceso.ROL_MODIFICAR)
     @PatchMapping("/roles/{vln_IdRol}/estado")
     public ResponseEntity<ModeloRolRespuesta>
     SIMM_ROL_ModificarEstado(
@@ -171,6 +189,7 @@ public class Ws_SIM_Seguridad {
      * @param vln_IdRol identificador del rol.
      * @return efecto de la inactivacion.
      */
+    @PreAuthorize(ReglasAcceso.ROL_CONSULTA)
     @GetMapping("/roles/{vln_IdRol}/impacto-inactivacion")
     public ResponseEntity<ModeloImpactoInactivacionRespuesta>
     SIMT_USUARIO_ROL_ObtenerImpactoInactivacion(
@@ -256,6 +275,23 @@ public class Ws_SIM_Seguridad {
                 vlo_EnPermiso.getDescripcion()
         );
 
+        Enumerados.ModuloPermiso vlo_Modulo =
+                Enumerados.ModuloPermiso.DesdeCodigo(
+                        vlo_EnPermiso.getModulo()
+                );
+
+        vlo_Respuesta.setModulo(
+                vlo_Modulo != null
+                        ? vlo_Modulo.name()
+                        : null
+        );
+
+        vlo_Respuesta.setNombreModulo(
+                vlo_Modulo != null
+                        ? vlo_Modulo.getNombre()
+                        : null
+        );
+
         return vlo_Respuesta;
     }
 
@@ -265,6 +301,7 @@ public class Ws_SIM_Seguridad {
      * @param vln_IdPermiso identificador del permiso.
      * @return rol con sus permisos actualizados.
      */
+    @PreAuthorize(ReglasAcceso.ROL_MODIFICAR)
     @PostMapping("/roles/{vln_IdRol}/permisos/{vln_IdPermiso}")
     public ResponseEntity<ModeloRolRespuesta>
     SIMT_ROL_PERMISO_InsertarRegistro(
@@ -291,6 +328,7 @@ public class Ws_SIM_Seguridad {
      * @param vln_IdPermiso identificador del permiso.
      * @return rol con sus permisos actualizados.
      */
+    @PreAuthorize(ReglasAcceso.ROL_MODIFICAR)
     @DeleteMapping("/roles/{vln_IdRol}/permisos/{vln_IdPermiso}")
     public ResponseEntity<ModeloRolRespuesta>
     SIMT_ROL_PERMISO_EliminarRegistro(
@@ -316,6 +354,7 @@ public class Ws_SIM_Seguridad {
      * para asociarlos a los roles.
      * @return lista de permisos activos.
      */
+    @PreAuthorize(ReglasAcceso.PERMISO_CONSULTA)
     @GetMapping("/permisos")
     public ResponseEntity<List<ModeloPermisoRespuesta>>
     SIMM_PERMISO_ObtenerRegistros() {
@@ -336,6 +375,7 @@ public class Ws_SIM_Seguridad {
      * @param pvo_Usuario usuario de la sesión, que realiza la asignación.
      * @return asignaciones registradas.
      */
+    @PreAuthorize(ReglasAcceso.ROL_ASIGNAR)
     @PostMapping("/usuarios/roles")
     public ResponseEntity<List<ModeloUsuarioRolRespuesta>>
     SIMT_USUARIO_ROL_InsertarRegistros(
@@ -368,6 +408,7 @@ public class Ws_SIM_Seguridad {
      * @param pvo_Usuario usuario de la sesión, que retira el rol.
      * @return asignacion finalizada.
      */
+    @PreAuthorize(ReglasAcceso.ROL_ASIGNAR)
     @DeleteMapping("/usuarios/{vln_IdUsuario}/roles/{vln_IdRol}")
     public ResponseEntity<ModeloUsuarioRolRespuesta>
     SIMT_USUARIO_ROL_EliminarRegistro(
@@ -398,6 +439,7 @@ public class Ws_SIM_Seguridad {
      * @param vln_IdUsuario identificador del usuario.
      * @return roles activos del usuario.
      */
+    @PreAuthorize(ReglasAcceso.USUARIO_ROLES_CONSULTA)
     @GetMapping("/usuarios/{vln_IdUsuario}/roles")
     public ResponseEntity<List<ModeloRolRespuesta>>
     SIMT_USUARIO_ROL_ObtenerRegistros(
@@ -482,6 +524,7 @@ public class Ws_SIM_Seguridad {
      * @param vln_IdUsuario identificador del usuario.
      * @return historial de asignaciones de roles.
      */
+    @PreAuthorize(ReglasAcceso.USUARIO_ROLES_CONSULTA)
     @GetMapping("/usuarios/{vln_IdUsuario}/roles/historial")
     public ResponseEntity<List<ModeloUsuarioRolRespuesta>>
     SIMT_USUARIO_ROL_ObtenerHistorial(
@@ -506,6 +549,7 @@ public class Ws_SIM_Seguridad {
      * @param vlc_Correo correo institucional.
      * @return usuario encontrado.
      */
+    @PreAuthorize(ReglasAcceso.USUARIO_ROLES_CONSULTA)
     @GetMapping("/usuarios/buscar")
     public ResponseEntity<ModeloUsuarioRespuesta>
     SIMF_USUARIO_ObtenerRegistroPorCorreo(

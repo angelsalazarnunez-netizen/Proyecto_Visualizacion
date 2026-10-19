@@ -2,6 +2,8 @@ import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 
 import Cmp_SIM_Marco from "../../componentes/Cmp_SIM_Marco.jsx";
+import Cmp_SIM_ConPermiso from "../../componentes/seguridad/Cmp_SIM_ConPermiso.jsx";
+import { PERMISOS } from "../../utilerias/Permisos.js";
 import { obtenerSesion } from "../../servicios/Srv_SIM_Autenticacion.js";
 import { obtenerDonaciones } from "../../servicios/Srv_SIM_Tramites.js";
 
@@ -25,6 +27,10 @@ import { obtenerDonaciones } from "../../servicios/Srv_SIM_Tramites.js";
  *   Fecha: 18/10/2026
  *   Descripción: el tipo se muestra y se filtra como Donación (D) o Fundación UCR (DF): la Unidad
  *     no distingue donaciones nacionales e internacionales.
+ *
+ *   Responsable: Equipo de Desarrollo SIM
+ *   Fecha: 19/10/2026
+ *   Descripción: restricciones por rol (HU-003): el botón de registrar donación solo se muestra con DONACION_CREAR.
  */
 
 const NOMBRES_TIPO_DONACION = {
@@ -155,10 +161,12 @@ function Lst_SIM_Donaciones() {
           <div>
             <h1 className="h4 mb-1">Expedientes de donación</h1>
           </div>
-          <Link className="btn btn-sim" to="/tramites/donaciones/nueva">
-            <i className="bi bi-plus-circle me-1" aria-hidden="true"></i>
-            Registrar donación
-          </Link>
+          <Cmp_SIM_ConPermiso permisos={[PERMISOS.DONACION_CREAR]}>
+            <Link className="btn btn-sim" to="/tramites/donaciones/nueva">
+              <i className="bi bi-plus-circle me-1" aria-hidden="true"></i>
+              Registrar donación
+            </Link>
+          </Cmp_SIM_ConPermiso>
         </div>
       </section>
 

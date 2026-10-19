@@ -280,4 +280,140 @@ public final class Enumerados {
             return this.vgc_MensajeRegistroSinVencimiento;
         }
     }
+
+    /**
+     * Autor: Equipo de Desarrollo SIM
+     * Fecha: 19/10/2026
+     * Descripción: Módulos de acceso de la HU-003. Agrupan los permisos de SIMM_PERMISO (columna
+     *   MODULO) y fijan el orden y el nombre con que se muestran en el menú y en la pantalla de
+     *   roles. El código coincide con 16-Modulos-Permisos-Roles-Base.sql y con
+     *   Frontend/src/utilerias/Permisos.js. Un módulo nuevo se agrega como un valor más.
+     */
+    public enum ModuloPermiso {
+
+        IMPORTACIONES(1, "Gestión de importaciones"),
+        EXONERACIONES(2, "Gestión de exoneraciones"),
+        ADUANERA(3, "Gestión aduanera"),
+        DONACIONES(4, "Gestión de donaciones"),
+        DESALMACENAJES(5, "Gestión de desalmacenajes especiales"),
+        REPORTES(6, "Reportes y consultas"),
+        APROBACIONES(7, "Aprobaciones"),
+        ADMIN_USUARIOS(8, "Administración de usuarios");
+
+        private final int vgn_Orden;
+        private final String vgc_Nombre;
+
+        ModuloPermiso(int pvn_Orden, String pvc_Nombre) {
+            this.vgn_Orden = pvn_Orden;
+            this.vgc_Nombre = pvc_Nombre;
+        }
+
+        public int getOrden() {
+            return this.vgn_Orden;
+        }
+
+        public String getNombre() {
+            return this.vgc_Nombre;
+        }
+
+        /**
+         * Autor: Equipo de Desarrollo SIM
+         * Fecha: 19/10/2026
+         * Descripción: Busca el módulo por su código de base de datos.
+         *
+         * @param pvc_Codigo valor de SIMM_PERMISO.MODULO
+         * @return el módulo, o null si el código es nulo o no corresponde a ningún módulo
+         */
+        public static ModuloPermiso DesdeCodigo(String pvc_Codigo) {
+            if (pvc_Codigo == null) {
+                return null;
+            }
+            for (ModuloPermiso vlo_Modulo : values()) {
+                if (vlo_Modulo.name().equalsIgnoreCase(pvc_Codigo.trim())) {
+                    return vlo_Modulo;
+                }
+            }
+            return null;
+        }
+    }
+
+    /**
+     * Autor: Equipo de Desarrollo SIM
+     * Fecha: 19/10/2026
+     * Descripción: Permisos de cada tipo de trámite (SIMM_TIPO_TRAMITE.CODIGO). Se usa en los
+     *   servicios compartidos por varios tipos (cambio de referencia, costos, descarga de
+     *   documentos, panel de trámites activos y búsqueda), donde el permiso depende del tipo del
+     *   trámite. Un tipo de trámite nuevo se agrega como un valor más; un tipo que no esté aquí no
+     *   lo puede consultar ni modificar nadie desde esos servicios.
+     */
+    public enum AccesoTipoTramite {
+
+        PEDIDO_IMPORTACION(
+                Constantes.CODIGO_TIPO_TRAMITE_PEDIDO_IMPORTACION,
+                Permisos.IMPORTACION_CONSULTAR,
+                Permisos.IMPORTACION_MODIFICAR),
+        EXONERACION(
+                Constantes.CODIGO_TIPO_TRAMITE_EXONERACION,
+                Permisos.EXONERACION_CONSULTAR,
+                Permisos.EXONERACION_MODIFICAR),
+        IMPORTACION_TEMPORAL(
+                Constantes.CODIGO_TIPO_TRAMITE_IMPORTACION_TEMPORAL,
+                Permisos.ADUANERO_TEMPORAL_CONSULTAR,
+                Permisos.ADUANERO_TEMPORAL_MODIFICAR),
+        EXPORTACION_TEMPORAL(
+                Constantes.CODIGO_TIPO_TRAMITE_EXPORTACION_TEMPORAL,
+                Permisos.ADUANERO_TEMPORAL_CONSULTAR,
+                Permisos.ADUANERO_TEMPORAL_MODIFICAR),
+        DONACION(
+                Constantes.CODIGO_TIPO_TRAMITE_DONACION,
+                Permisos.DONACION_CONSULTAR,
+                Permisos.DONACION_MODIFICAR),
+        DESALMACENAJE(
+                Constantes.CODIGO_TIPO_TRAMITE_DESALMACENAJE,
+                Permisos.DESALMACENAJE_CONSULTAR,
+                Permisos.DESALMACENAJE_MODIFICAR);
+
+        private final String vgc_CodigoTipoTramite;
+        private final String vgc_PermisoConsultar;
+        private final String vgc_PermisoModificar;
+
+        AccesoTipoTramite(String pvc_CodigoTipoTramite, String pvc_PermisoConsultar,
+                          String pvc_PermisoModificar) {
+            this.vgc_CodigoTipoTramite = pvc_CodigoTipoTramite;
+            this.vgc_PermisoConsultar = pvc_PermisoConsultar;
+            this.vgc_PermisoModificar = pvc_PermisoModificar;
+        }
+
+        public String getCodigoTipoTramite() {
+            return this.vgc_CodigoTipoTramite;
+        }
+
+        public String getPermisoConsultar() {
+            return this.vgc_PermisoConsultar;
+        }
+
+        public String getPermisoModificar() {
+            return this.vgc_PermisoModificar;
+        }
+
+        /**
+         * Autor: Equipo de Desarrollo SIM
+         * Fecha: 19/10/2026
+         * Descripción: Busca los permisos de un tipo de trámite por su código.
+         *
+         * @param pvc_CodigoTipoTramite valor de SIMM_TIPO_TRAMITE.CODIGO
+         * @return el acceso del tipo, o null si el código es nulo o no está configurado
+         */
+        public static AccesoTipoTramite DesdeCodigo(String pvc_CodigoTipoTramite) {
+            if (pvc_CodigoTipoTramite == null) {
+                return null;
+            }
+            for (AccesoTipoTramite vlo_Acceso : values()) {
+                if (vlo_Acceso.vgc_CodigoTipoTramite.equalsIgnoreCase(pvc_CodigoTipoTramite.trim())) {
+                    return vlo_Acceso;
+                }
+            }
+            return null;
+        }
+    }
 }

@@ -696,7 +696,7 @@ public final class Constantes {
     // Responsable: Equipo de Desarrollo SIM. Fecha: 05/10/2026.
     // -----------------------------------------------------------------------
 
-    public static final String PERMISO_APROBAR_EXONERACION = "EXONERACION_APROBAR";
+    // El permiso para decidir es Permisos.EXONERACION_APROBAR (única fuente de códigos de permiso).
     public static final String DECISION_EXONERACION_APROBAR = "APR";
     public static final String DECISION_EXONERACION_RECHAZAR = "REC";
     public static final String DECISION_EXONERACION_MODIFICAR = "MOD";
