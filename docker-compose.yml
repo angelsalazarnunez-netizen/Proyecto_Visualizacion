@@ -1,0 +1,53 @@
+# SIM completo en Docker: MySQL + backend + frontend, y un túnel opcional de Cloudflare.
+# Usa los mismos Dockerfile que el despliegue en Railway.
+# Uso:  docker compose up -d --build                 -> http://localhost:8081
+#       docker compose --profile publico up -d       -> además abre una dirección pública
+services:
+  mysql:
+    build:
+      context: .
+      dockerfile: docker/mysql/Dockerfile
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+      MYSQL_DATABASE: sim
+      MYSQL_USER: sim_developer_01
+      MYSQL_PASSWORD: ${SIM_DB_PASSWORD}
+      TZ: America/Costa_Rica
+    volumes:
+      - datos-mysql:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1", "-uroot", "-p${MYSQL_ROOT_PASSWORD}"]
+      interval: 5s
+      timeout: 5s
+      retries: 40
+
+  backend:
+    build: ./Backend
+    depends_on:
+      mysql:
+        condition: service_healthy
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/sim
+      SPRING_DATASOURCE_USERNAME: sim_developer_01
+      SPRING_DATASOURCE_PASSWORD: ${SIM_DB_PASSWORD}
+      SIM_FRONTEND_URL: ${SIM_FRONTEND_URL:-http://localhost:8081}
+      TZ: America/Costa_Rica
+    volumes:
+      - ./Backend/documentos:/app/documentos
+
+  frontend:
+    build: ./Frontend
+    depends_on:
+      - backend
+    ports:
+      - "8081:80"
+
+  tunel:
+    image: cloudflare/cloudflared:latest
+    profiles: ["publico"]
+    command: tunnel --no-autoupdate --url http://frontend:80
+    depends_on:
+      - frontend
+
+volumes:
+  datos-mysql:
