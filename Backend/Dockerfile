@@ -10,5 +10,8 @@ RUN mvn -q -B -Dmaven.test.skip=true package
 FROM eclipse-temurin:21-jre
 WORKDIR /app
 COPY --from=compilacion /fuente/target/*.jar sim.jar
+# PDF de los expedientes de prueba (script 18). Al arrancar se copian a ./documentos sin
+# reemplazar los que ya existan, así también llegan a un volumen montado en /app/documentos.
+COPY documentos-pruebas /app/documentos-pruebas
 EXPOSE 8080
-ENTRYPOINT ["java", "-jar", "sim.jar"]
+ENTRYPOINT ["sh", "-c", "mkdir -p documentos; cp -r --update=none documentos-pruebas/. documentos/; exec java -jar sim.jar"]

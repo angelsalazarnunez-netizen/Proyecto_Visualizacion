@@ -1,0 +1,102 @@
+-- Autor: Equipo de Desarrollo SIM
+-- Fecha: 19/10/2026
+-- Descripción: Retira los datos de las pruebas de usabilidad del 20/10/2026 cuando ya no se
+--   necesitan: elimina los expedientes de la serie 3xx (precargados por
+--   18-Datos-Pruebas-Usabilidad.sql y registrados por los participantes) y deja inactivas las seis
+--   cuentas de 17-Usuarios-Pruebas-Usabilidad.sql. NO debe ejecutarse en producción.
+-- Motor: MySQL 8+
+--
+-- Las cuentas no se borran: se finaliza su rol y quedan sin rol asignado (ESTADO_ROL = 'PEN'),
+-- de modo que ya no pueden iniciar sesión y se conserva cualquier registro de auditoría que las
+-- mencione. Los archivos subidos durante las pruebas quedan en la carpeta documentos/ del backend
+-- (subcarpetas con las referencias de la serie 3xx) y se pueden borrar a mano.
+--
+-- Para volver a dejar el ambiente como al inicio de una sesión no use este script: basta con
+-- volver a ejecutar 18-Datos-Pruebas-Usabilidad.sql.
+--
+-- Cómo cargarlo (PowerShell):
+--   & "C:\Program Files\MySQL\MySQL Server 8.0\bin\mysql.exe" -u root -p -e "source database/19-Limpieza-Pruebas-Usabilidad.sql"
+
+SET NAMES utf8mb4;
+
+USE sim;
+
+-- ---------------------------------------------------------------------------
+-- Expedientes de la serie 3xx.
+-- ---------------------------------------------------------------------------
+
+DROP TEMPORARY TABLE IF EXISTS TMP_TRAMITE_USABILIDAD;
+CREATE TEMPORARY TABLE TMP_TRAMITE_USABILIDAD (ID_TRAMITE INT NOT NULL PRIMARY KEY);
+
+INSERT INTO TMP_TRAMITE_USABILIDAD (ID_TRAMITE)
+SELECT ID_TRAMITE
+FROM SIMT_TRAMITE
+WHERE REFERENCIA_INTERNA IN (
+    -- Precargados por este script
+    '2026-301', '2026-302', 'DE-301-26', 'D-302-26', 'EXO-303-26', 'EXO-304-26', 'EXO-305-26',
+    'EXO-306-26', 'DF-307-26', 'DF-308-26', 'IT-309-26', 'IT-310-26', 'IT-311-26',
+    'EXP-T-312-26', 'EXP-T-313-26', 'IT-314-26', 'IT-315-26',
+    -- Registrados por los participantes durante las pruebas (fichas T01, T04, T06 y T08)
+    '2026-317', '2026-318', 'EXO-321-26', 'EXO-322-26', 'D-323-26', 'D-324-26',
+    'IT-325-26', 'IT-326-26', 'IT-327-26', 'IT-328-26'
+);
+
+DELETE N FROM SIMT_NOTIFICACION_EXONERACION N
+JOIN SIMT_DECISION_EXONERACION D ON D.ID_DECISION = N.ID_DECISION
+JOIN TMP_TRAMITE_USABILIDAD T ON T.ID_TRAMITE = D.ID_TRAMITE;
+DELETE D FROM SIMT_DECISION_EXONERACION D JOIN TMP_TRAMITE_USABILIDAD T ON T.ID_TRAMITE = D.ID_TRAMITE;
+UPDATE SIMT_AUTORIZACION_EXONET A JOIN TMP_TRAMITE_USABILIDAD T ON T.ID_TRAMITE = A.ID_TRAMITE
+SET A.ID_AUTORIZACION_ANTERIOR = NULL;
+DELETE A FROM SIMT_AUTORIZACION_EXONET A JOIN TMP_TRAMITE_USABILIDAD T ON T.ID_TRAMITE = A.ID_TRAMITE;
+DELETE O FROM SIMT_OBSERVACION_EXPED O JOIN TMP_TRAMITE_USABILIDAD T ON T.ID_TRAMITE = O.ID_TRAMITE;
+DELETE R FROM SIMT_REVISION_DOCUMENTO R
+JOIN SIMF_DOCUMENTO D ON D.ID_DOCUMENTO = R.ID_DOCUMENTO
+JOIN TMP_TRAMITE_USABILIDAD T ON T.ID_TRAMITE = D.ID_TRAMITE;
+DELETE H FROM SIMT_HISTORIAL_PRORROGA_TEMPORAL H JOIN TMP_TRAMITE_USABILIDAD T ON T.ID_TRAMITE = H.ID_TRAMITE;
+DELETE A FROM SIMT_ALERTA_TEMPORAL A JOIN TMP_TRAMITE_USABILIDAD T ON T.ID_TRAMITE = A.ID_TRAMITE;
+DELETE G FROM SIMT_TEMPORAL_AGENTE G JOIN TMP_TRAMITE_USABILIDAD T ON T.ID_TRAMITE = G.ID_TRAMITE;
+DELETE X FROM SIMT_TRAMITE_TEMPORAL X JOIN TMP_TRAMITE_USABILIDAD T ON T.ID_TRAMITE = X.ID_TRAMITE;
+DELETE X FROM SIMT_PEDIDO_PROV X JOIN TMP_TRAMITE_USABILIDAD T ON T.ID_TRAMITE = X.ID_TRAMITE;
+DELETE X FROM SIMT_EXONERACION X JOIN TMP_TRAMITE_USABILIDAD T ON T.ID_TRAMITE = X.ID_TRAMITE;
+DELETE X FROM SIMT_DONACION X JOIN TMP_TRAMITE_USABILIDAD T ON T.ID_TRAMITE = X.ID_TRAMITE;
+UPDATE SIMT_DESALMACENAJE_ESPEC X JOIN TMP_TRAMITE_USABILIDAD T ON T.ID_TRAMITE = X.ID_TRAMITE_RECLASIFICADO
+SET X.ID_TRAMITE_RECLASIFICADO = NULL;
+DELETE X FROM SIMT_DESALMACENAJE_ESPEC X JOIN TMP_TRAMITE_USABILIDAD T ON T.ID_TRAMITE = X.ID_TRAMITE;
+DELETE H FROM SIMH_ESTADO_TRAMITE H JOIN TMP_TRAMITE_USABILIDAD T ON T.ID_TRAMITE = H.ID_TRAMITE;
+DELETE B FROM SIML_BITACORA B JOIN TMP_TRAMITE_USABILIDAD T ON T.ID_TRAMITE = B.ID_TRAMITE;
+UPDATE SIMF_DOCUMENTO D JOIN TMP_TRAMITE_USABILIDAD T ON T.ID_TRAMITE = D.ID_TRAMITE
+SET D.ID_DOCUMENTO_ANTERIOR = NULL;
+DELETE D FROM SIMF_DOCUMENTO D JOIN TMP_TRAMITE_USABILIDAD T ON T.ID_TRAMITE = D.ID_TRAMITE;
+DELETE X FROM SIMT_TRAMITE X JOIN TMP_TRAMITE_USABILIDAD T ON T.ID_TRAMITE = X.ID_TRAMITE;
+
+DROP TEMPORARY TABLE TMP_TRAMITE_USABILIDAD;
+
+-- ---------------------------------------------------------------------------
+-- Cuentas de las pruebas: sin rol y sin sesiones activas.
+-- ---------------------------------------------------------------------------
+
+UPDATE SIMT_USUARIO_ROL UR
+JOIN SIMF_USUARIO U ON U.ID_USUARIO = UR.ID_USUARIO
+SET UR.ESTADO = 'INA',
+    UR.FECHA_FINALIZACION = NOW(6),
+    UR.MOTIVO = 'Fin de las pruebas de usabilidad'
+WHERE U.CORREO_INSTITUCIONAL LIKE '%.usabilidad@ucr.ac.cr'
+  AND UR.ESTADO = 'ACT';
+
+UPDATE SIT_SESION S
+JOIN SIMF_USUARIO U ON U.ID_USUARIO = S.ID_USUARIO
+SET S.ES_ACTIVA = 0
+WHERE U.CORREO_INSTITUCIONAL LIKE '%.usabilidad@ucr.ac.cr';
+
+UPDATE SIMF_USUARIO
+SET ESTADO_ROL = 'PEN'
+WHERE CORREO_INSTITUCIONAL LIKE '%.usabilidad@ucr.ac.cr';
+
+-- Resultado: no debe quedar ningún expediente de la serie 3xx ni cuenta de pruebas con rol.
+SELECT COUNT(*) AS EXPEDIENTES_RESTANTES
+FROM SIMT_TRAMITE
+WHERE REFERENCIA_INTERNA REGEXP '^(2026-3[0-9]{2}|[A-Z-]+-3[0-9]{2}-26)$';
+
+SELECT CORREO_INSTITUCIONAL, ESTADO_ROL
+FROM SIMF_USUARIO
+WHERE CORREO_INSTITUCIONAL LIKE '%.usabilidad@ucr.ac.cr';
